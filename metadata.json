@@ -1,0 +1,9 @@
+{
+  "name": "Skill Swap",
+  "description": "A peer-to-peer web platform where users can exchange skills. Earn tokens by teaching what you know, and spend them to learn something new from the community.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}

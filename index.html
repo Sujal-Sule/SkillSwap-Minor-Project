@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill Swap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class', // Enable class-based dark mode
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            sky: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            slate: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            },
+            amber: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            },
+            purple: {
+              50: '#faf5ff',
+              100: '#f3e8ff',
+              200: '#e9d5ff',
+              300: '#d8b4fe',
+              400: '#c084fc',
+              500: '#a855f7',
+              600: '#9333ea',
+              700: '#7e22ce',
+              800: '#6b21a8',
+              900: '#581c87',
+            },
+            emerald: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            rose: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              300: '#fda4af',
+              400: '#fb7185',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              800: '#9f1239',
+              900: '#881337',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --body-bg: #f1f5f9;
+      /* slate-100 */
+      --grid-dot-color: rgba(0, 0, 0, 0.04);
+      --nav-bg: rgba(248, 250, 252, 0.7);
+      /* slate-50 */
+      --nav-gradient-start: rgba(0, 0, 0, 0.05);
+      --nav-border: rgba(0, 0, 0, 0.08);
+      --nav-inner-border-start: rgba(0, 0, 0, 0.1);
+      --card-bg-light: #ffffff;
+      --card-bg-dark: #1e293b;
+      --sidebar-bg-dark: #0f172a;
+    }
+
+    .dark {
+      --body-bg: #020617;
+      /* slate-950 */
+      --grid-dot-color: rgba(255, 255, 255, 0.05);
+      --nav-bg: rgba(15, 23, 42, 0.7);
+      /* slate-900 */
+      --nav-gradient-start: rgba(255, 255, 255, 0.08);
+      --nav-border: rgba(255, 255, 255, 0.1);
+      --nav-inner-border-start: rgba(255, 255, 255, 0.2);
+      --sidebar-bg-dark: #0f172a;
+    }
+
+    body {
+      background-color: var(--body-bg);
+      background-image: radial-gradient(circle at 1px 1px, var(--grid-dot-color) 1px, transparent 0);
+      background-size: 25px 25px;
+      transition: background-color 0.3s ease-in-out;
+    }
+
+    .glassy-nav-container {
+      background: radial-gradient(circle at 50% 0, var(--nav-gradient-start), rgba(255, 255, 255, 0) 70%), var(--nav-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--nav-border);
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    }
+
+    .glassy-nav-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      /* The "thickness" of the inner border */
+      background: linear-gradient(135deg, var(--nav-inner-border-start), rgba(255, 255, 255, 0));
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .glassy-dock {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--nav-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--nav-border);
+      border-radius: 9999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    }
+
+    .spotlight-bg {
+      background-color: var(--body-bg);
+    }
+
+    .spotlight-bg::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), hsla(197, 92%, 52%, 0.15), transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .spotlight-bg>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #e0f2fe, #7dd3fc);
+      /* sky-100 to sky-300 */
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-fill-color: transparent;
+    }
+
+    .variable-font {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Glowing Card Animation */
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    @keyframes spin {
+      to {
+        --angle: 360deg;
+      }
+    }
+
+    .glowing-card {
+      --angle: 0deg;
+      --border-size: 3px;
+      --border-color: conic-gradient(from var(--angle),
+          hsl(222 47% 11% / 0.2),
+          #0ea5e9,
+          #a855f7,
+          #10b981,
+          #0ea5e9,
+          hsl(222 47% 11% / 0.2));
+
+      position: relative;
+      border: var(--border-size) solid transparent;
+
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+
+      background-image:
+        linear-gradient(to right, var(--card-bg-light), var(--card-bg-light)),
+        var(--border-color);
+
+      animation: spin 4s linear infinite;
+    }
+
+    .dark .glowing-card {
+      background-image:
+        linear-gradient(to right, var(--card-bg-dark), var(--card-bg-dark)),
+        var(--border-color);
+    }
+
+    .glowing-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(350px circle at var(--mouse-x) var(--mouse-y), hsla(197, 92%, 52%, 0.1), transparent 80%);
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: inherit;
+    }
+
+    .glowing-card:hover::before {
+      opacity: 1;
+    }
+
+    .glowing-card>* {
+      position: relative;
+      z-index: 2;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
