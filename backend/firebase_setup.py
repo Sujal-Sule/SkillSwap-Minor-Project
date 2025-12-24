@@ -1,18 +1,32 @@
 import firebase_admin
 from firebase_admin import credentials, auth
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-cred_path = os.getenv("FIREBASE_CREDENTIALS", os.path.join(base_dir, "serviceAccountKey.json"))
+# Priority 1: JSON content from env var (for Production/Render)
+firebase_json_str = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 
-if not os.path.exists(cred_path):
-    print(f"Warning: Firebase credentials file not found at {cred_path}")
-    cred = None
+if firebase_json_str:
+    try:
+        cred_dict = json.loads(firebase_json_str)
+        cred = credentials.Certificate(cred_dict)
+    except json.JSONDecodeError as e:
+        print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+        cred = None
 else:
-    cred = credentials.Certificate(cred_path)
+    # Priority 2: File path (Local dev)
+    cred_path = os.getenv("FIREBASE_CREDENTIALS", os.path.join(base_dir, "serviceAccountKey.json"))
+    if not os.path.exists(cred_path):
+        print(f"Warning: Firebase credentials file not found at {cred_path}")
+        cred = None
+    else:
+        cred = credentials.Certificate(cred_path)
+
+if cred:
     try:
         firebase_admin.get_app()
     except ValueError:
