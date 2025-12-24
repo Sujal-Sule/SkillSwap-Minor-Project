@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export const getWebSocketUrl = (path: string) => {
+    const url = API_URL.replace(/^http/, 'ws');
+    return `${url}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 async function getAuthHeaders() {
     const token = localStorage.getItem('appToken'); // We might store it here, or get from Firebase

@@ -23,7 +23,7 @@ import Dock from './components/Dock';
 import { HomeIcon, MagnifyingGlassIcon, UserCircleIcon, ChatBubbleLeftRightIcon, SparklesIcon, ShieldCheckIcon, BellIcon, PlusCircleIcon } from './components/icons';
 // Import the auth wrappers
 import { signInWithGooglePopup, loginWithEmailAndPasswordService, registerWithEmailAndPassword } from './services/authServices';
-import { api } from './services/api';
+import { api, getWebSocketUrl } from './services/api';
 
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
@@ -240,7 +240,7 @@ const App: React.FC = () => {
             fetchMessages();
 
             // Connect WebSocket
-            const socketUrl = `ws://localhost:8000/chat/ws/${currentUser.id}`;
+            const socketUrl = getWebSocketUrl(`chat/ws/${currentUser.id}`);
             ws.current = new WebSocket(socketUrl);
 
             ws.current.onopen = () => {

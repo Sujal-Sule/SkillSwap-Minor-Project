@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import { getWebSocketUrl } from '../services/api';
 import { PencilIcon, TrashIcon, HandRaisedIcon, PlusIcon, MinusIcon, ArrowPathIcon } from './icons';
 
 // --- Local Icons for Whiteboard Tools ---
@@ -149,7 +150,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
     useEffect(() => {
         if (!sessionId) return;
 
-        const url = `ws://localhost:8000/whiteboard/ws/${sessionId}`;
+        const url = getWebSocketUrl(`whiteboard/ws/${sessionId}`);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
