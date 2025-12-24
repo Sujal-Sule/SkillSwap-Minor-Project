@@ -35,6 +35,9 @@ origins = [
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     origins.append(frontend_url)
+    origin_without_slash = frontend_url.rstrip("/")
+    if origin_without_slash != frontend_url:
+        origins.append(origin_without_slash)
 
 app.add_middleware(
     CORSMiddleware,
