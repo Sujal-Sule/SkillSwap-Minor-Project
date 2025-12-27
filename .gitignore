@@ -27,3 +27,5 @@ venv
 .agent
 serviceAccountKey.json
 skill-swap-firebase-credentials.json
+__pycache__/
+*.pyc
