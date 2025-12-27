@@ -28,6 +28,12 @@ import { api, getWebSocketUrl } from './services/api';
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
+
+const parseAsUTC = (dateString: string) => {
+    if (!dateString) return new Date();
+    return new Date(dateString.endsWith('Z') ? dateString : dateString + 'Z');
+};
+
 const Layout = ({ children, currentUser, isAdmin, logout, theme, toggleTheme, navItems }: any) => {
     const location = useLocation();
     const currentPageId = navItems.find((item: any) => item.path === location.pathname)?.id || '';
@@ -108,11 +114,11 @@ const App: React.FC = () => {
             setSessions(sessionsRes.map((s: any) => ({
                 ...s,
                 id: s._id || s.id,
-                scheduledTime: new Date(s.scheduledTime.endsWith('Z') ? s.scheduledTime : s.scheduledTime + 'Z'),
-                startedAt: s.startedAt ? new Date(s.startedAt.endsWith('Z') ? s.startedAt : s.startedAt + 'Z') : undefined
+                scheduledTime: parseAsUTC(s.scheduledTime),
+                startedAt: s.startedAt ? parseAsUTC(s.startedAt) : undefined
             })));
             setConnectionRequests(connectionsRes.map((c: any) => ({ ...c, id: c._id || c.id })));
-            setTokenTransactions(transactionsRes.map((t: any) => ({ ...t, id: t._id || t.id, timestamp: new Date(t.timestamp) })));
+            setTokenTransactions(transactionsRes.map((t: any) => ({ ...t, id: t._id || t.id, timestamp: parseAsUTC(t.timestamp) })));
             setRatings(ratingsRes.map((r: any) => ({ ...r, id: r._id || r.id })));
         } catch (e) {
             console.error("Failed to fetch data", e);
@@ -226,8 +232,12 @@ const App: React.FC = () => {
             // Ensure dates are Date objects
             const parsedMsgs = msgs.map((m: any) => ({
                 ...m,
-                timestamp: new Date(m.timestamp),
-                id: m._id || m.id
+                timestamp: parseAsUTC(m.timestamp),
+                id: m._id || m.id,
+                session: m.session ? {
+                    ...m.session,
+                    scheduledTime: parseAsUTC(m.session.scheduledTime)
+                } : undefined
             }));
             setMessages(parsedMsgs);
         } catch (e) {
@@ -287,13 +297,13 @@ const App: React.FC = () => {
                 const sessionData = data.session ? {
                     ...data.session,
                     id: data.session._id || data.session.id,
-                    scheduledTime: new Date(data.session.scheduledTime.endsWith('Z') ? data.session.scheduledTime : data.session.scheduledTime + 'Z'),
-                    startedAt: data.session.startedAt ? new Date(data.session.startedAt.endsWith('Z') ? data.session.startedAt : data.session.startedAt + 'Z') : undefined
+                    scheduledTime: parseAsUTC(data.session.scheduledTime),
+                    startedAt: data.session.startedAt ? parseAsUTC(data.session.startedAt) : undefined
                 } : undefined;
 
                 const parsedMessage: Message = {
                     ...data,
-                    timestamp: new Date(data.timestamp),
+                    timestamp: parseAsUTC(data.timestamp),
                     id: data._id || data.id,
                     session: sessionData,
                     isRead: data.isRead ?? false // Ensure isRead is set, default to false

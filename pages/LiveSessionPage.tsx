@@ -46,7 +46,12 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                 const res = await api.put(`/sessions/${session.id}/start`);
                 console.log("Start time res:", res);
                 if (res.startedAt) {
-                    startTimeRef.current = new Date(res.startedAt).getTime();
+                    // Ensure we treat the backend time as UTC or properly ISO formatted
+                    // If it ends with Z, it's UTC. If not, appending Z often fixes 'local assumption' issues if backend is UTC.
+                    // But standard is: backend sends ISO string.
+                    const timeString = res.startedAt.endsWith('Z') ? res.startedAt : res.startedAt + 'Z';
+                    startTimeRef.current = new Date(timeString).getTime();
+
                     // Initial sync
                     const now = Date.now();
                     setElapsedTime(Math.max(0, Math.floor((now - startTimeRef.current) / 1000)));
