@@ -48,9 +48,11 @@ app.add_middleware(
 )
 
 @app.get("/")
+@app.head("/")
 async def read_root():
     return {"message": "Welcome to SkillSwap API"}
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
     return {"status": "ok", "message": "Server is healthy"}
