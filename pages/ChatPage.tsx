@@ -19,16 +19,33 @@ interface ChatPageProps {
 }
 
 const formatRelativeTime = (date: Date) => {
-    const now = new Date();
-    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-    const minutes = Math.round(seconds / 60);
-    const hours = Math.round(minutes / 60);
-    const days = Math.round(hours / 24);
+    // Ensure date is valid
+    if (!(date instanceof Date)) {
+        date = new Date(date);
+    }
 
-    if (seconds < 60) return `${seconds}s ago`;
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return 'Recently';
+    }
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+
+    // If future date or invalid, fallback
+    if (diffMs < 0) {
+        return 'Just now';
+    }
+
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 60) return seconds === 1 ? '1s ago' : `${seconds}s ago`;
+    if (minutes < 60) return minutes === 1 ? '1m ago' : `${minutes}m ago`;
+    if (hours < 24) return hours === 1 ? '1h ago' : `${hours}h ago`;
+    if (days < 7) return days === 1 ? '1d ago' : `${days}d ago`;
     return date.toLocaleDateString();
 };
 

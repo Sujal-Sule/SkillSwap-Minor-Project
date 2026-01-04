@@ -26,9 +26,11 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
 
     // Refs
     const allStreamsRef = useRef<MediaStream[]>([]);
-    const cameraStreamRef = useRef<MediaStream | null>(null);
+    const cameraStreamRef = useRef<MediaStream | null>(null); // Stores the original camera stream
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const startTimeRef = useRef<number | null>(null);
+    const audioTrackRef = useRef<MediaStreamTrack | null>(null); // Dedicated ref for audio track
+    const videoTrackRef = useRef<MediaStreamTrack | null>(null); // Dedicated ref for camera video track
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -36,6 +38,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
         const s = (seconds % 60).toString().padStart(2, '0');
         return `${h}:${m}:${s}`;
     };
+
 
 
     // --- Timer Logic (Robust) ---
@@ -46,13 +49,8 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                 const res = await api.put(`/sessions/${session.id}/start`);
                 console.log("Start time res:", res);
                 if (res.startedAt) {
-                    // Ensure we treat the backend time as UTC or properly ISO formatted
-                    // If it ends with Z, it's UTC. If not, appending Z often fixes 'local assumption' issues if backend is UTC.
-                    // But standard is: backend sends ISO string.
                     const timeString = res.startedAt.endsWith('Z') ? res.startedAt : res.startedAt + 'Z';
                     startTimeRef.current = new Date(timeString).getTime();
-
-                    // Initial sync
                     const now = Date.now();
                     setElapsedTime(Math.max(0, Math.floor((now - startTimeRef.current) / 1000)));
                 } else {
@@ -79,37 +77,77 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
     useEffect(() => {
         let ignoreOffer = false;
         let makingOffer = false;
-        const polite = currentUser.id !== session.proposerId; // Proposer is impolite (initiator)
+        const polite = currentUser.id !== session.proposerId;
 
         const setupMediaAndConnection = async () => {
             try {
-                // 1. Get User Media
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                // 1. Get User Media with Bandwidth Constraints
+                // Default to 480p to save data. Scale resolution down by default in sender if possible, but constraints are safer first step.
+                const constraints = {
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        frameRate: { ideal: 24, max: 30 }
+                    }
+                };
+
+                console.log("Requesting media with constraints:", constraints);
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
                 setLocalStream(stream);
                 cameraStreamRef.current = stream;
                 allStreamsRef.current.push(stream);
                 setPermissionError(null);
 
+                // Store tracks for robust toggling
+                audioTrackRef.current = stream.getAudioTracks()[0] || null;
+                videoTrackRef.current = stream.getVideoTracks()[0] || null;
+
                 // 2. Init PeerConnection
                 const pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+                    iceCandidatePoolSize: 2 // Optimization
                 });
                 peerConnection.current = pc;
 
-                // 3. Add Tracks
+                // 3. Add Tracks & Configure Bitrate
                 stream.getTracks().forEach(track => {
-                    pc.addTrack(track, stream);
+                    const sender = pc.addTrack(track, stream);
+
+                    // Apply Bitrate Limits for Video
+                    if (track.kind === 'video') {
+                        const params = sender.getParameters();
+                        if (!params.encodings) params.encodings = [{}];
+                        // Max 400kbps for mobile optimization
+                        params.encodings[0].maxBitrate = 400000;
+                        // params.encodings[0].scaleResolutionDownBy = 1.0; 
+                        sender.setParameters(params).then(() => {
+                            console.log("Video bitrate limited to 400kbps");
+                        }).catch(e => console.warn("Bitrate limit failed", e));
+                    }
                 });
 
                 // 4. Handle Remote Tracks
                 pc.ontrack = ({ track, streams }) => {
                     console.log("Received remote track", track.kind, streams[0].id);
-                    setRemoteStream(streams[0]);
-                    // Fallback to ensure unmute catch if needed, but primary set should be immediate
-                    track.onunmute = () => {
-                        console.log("Track unmuted", track.kind);
+                    // Ensure we attach to the stream properly.
+                    // If stream already exists, this might fire for the second track (audio/video).
+                    // We set it every time to ensure state updates.
+                    if (streams[0]) {
                         setRemoteStream(streams[0]);
-                    };
+
+                        // Handle track unmuting (important for screen share start/stop on remote side)
+                        track.onunmute = () => {
+                            console.log(`Remote track ${track.kind} unmuted`);
+                            // Force re-render if needed or re-set stream
+                            setRemoteStream(prev => prev ? prev : streams[0]);
+                        };
+                    }
                 };
 
                 // 5. Handle ICE Candidates
@@ -125,10 +163,11 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                     }
                 };
 
-                // 6. Perfect Negotiation: Negotiation Needed
+                // 6. Perfect Negotiation Implementation
                 pc.onnegotiationneeded = async () => {
                     try {
                         makingOffer = true;
+                        // For stability, wait a tick? No, standard is immediate.
                         await pc.setLocalDescription();
                         const signal = {
                             type: 'signal',
@@ -144,36 +183,43 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                     }
                 };
 
-                // Monitor Connection State (Handle Disconnects)
+                // Connection Monitoring
                 pc.oniceconnectionstatechange = () => {
-                    console.log("ICE Connection State:", pc.iceConnectionState);
-                    if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
-                        console.log("Remote peer disconnected");
-                        setRemoteStream(null);
+                    console.log("ICE State:", pc.iceConnectionState);
+                    if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) {
+                        // Don't nullify remote stream immediately on disconnected, it might be a temporary network glitch (switching wifi/data)
+                        // Only on failed or closed.
+                        if (pc.iceConnectionState !== 'disconnected') {
+                            setRemoteStream(null);
+                        }
                     }
                 };
-
-                pc.onconnectionstatechange = () => {
-                    console.log("Peer Connection State:", pc.connectionState);
-                    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                        setRemoteStream(null);
-                    }
-                };
-
-                console.log("Setup WebRTC - Me:", currentUser.id, "Proposer:", session.proposerId, "Polite:", polite);
 
                 // Queue for ICE candidates
                 const candidateQueue: RTCIceCandidateInit[] = [];
                 let isSettingRemoteDescription = false;
 
-                // 7. Signal Handling Logic (Closure captures polite/makingOffer)
+                // 7. Signal Handling
                 const handleSignal = async (e: CustomEvent) => {
                     const data = e.detail;
                     if (data.sender === currentUser.id) return;
 
                     // Handle Mode Change
                     if (data.payload?.type === 'mode_change') {
+                        console.log("Remote peer changed mode:", data.payload.mode);
                         setViewMode(data.payload.mode);
+                        return;
+                    }
+
+                    // Handle User Joined (Trigger Renegotiation if needed)
+                    if (data.payload?.type === 'user_joined') {
+                        console.log("Remote user joined - checking connection");
+                        const pc = peerConnection.current;
+                        if (pc) {
+                            console.log("Triggering ICE restart for new peer");
+                            // Force negotiation start
+                            pc.restartIce();
+                        }
                         return;
                     }
 
@@ -184,44 +230,31 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
 
                     try {
                         if (description) {
-                            // Perfect Negotiation Pattern
                             const offerCollision = (description.type === 'offer') &&
                                 (makingOffer || pc.signalingState !== 'stable');
 
                             ignoreOffer = !polite && offerCollision;
                             if (ignoreOffer) {
-                                console.log("Impolite peer matches collision, ignoring offer");
+                                console.log("Ignoring colliding offer (impolite)");
                                 return;
                             }
 
                             isSettingRemoteDescription = true;
                             if (offerCollision) {
-                                // Polite peer rolls back
-                                console.log("Polite peer rolling back");
                                 await pc.setLocalDescription({ type: 'rollback' });
-                            }
-
-                            // Guard: Don't set remote ANSWER if we are already stable (implies we rolled back or didn't offer)
-                            if (description.type === 'answer' && pc.signalingState === 'stable') {
-                                console.warn("Ignored remote answer because signalingState is stable (likely old answer to rolled-back offer)");
-                                isSettingRemoteDescription = false;
-                                return;
                             }
 
                             await pc.setRemoteDescription(description);
                             isSettingRemoteDescription = false;
 
-                            // Flush buffered candidates
+                            // Flush candidates
                             while (candidateQueue.length) {
-                                const bufferedCandidate = candidateQueue.shift();
-                                if (bufferedCandidate) {
-                                    console.log("Flushing buffered candidate");
-                                    await pc.addIceCandidate(bufferedCandidate);
-                                }
+                                const buffered = candidateQueue.shift();
+                                if (buffered) await pc.addIceCandidate(buffered);
                             }
 
                             if (description.type === 'offer') {
-                                await pc.setLocalDescription(); // Auto-creates answer
+                                await pc.setLocalDescription();
                                 const signal = {
                                     type: 'signal',
                                     target: otherUser.id,
@@ -236,8 +269,6 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                                 if (pc.remoteDescription && !isSettingRemoteDescription) {
                                     await pc.addIceCandidate(candidate);
                                 } else {
-                                    // Queue candidate if remote description is not yet set
-                                    console.log("Queueing ICE candidate (remote description not set)");
                                     candidateQueue.push(candidate);
                                 }
                             } catch (err) {
@@ -245,32 +276,30 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                             }
                         }
                     } catch (err) {
-                        console.error("Signaling Error", err);
+                        console.error("Signal Handling Error", err);
                         isSettingRemoteDescription = false;
                     }
                 };
 
-                // Attach Listener
                 window.addEventListener('webrtc-signal', handleSignal as EventListener);
-
-                // Cleanup Listener on unmount only
-                // BUT wait, we need to return the cleanup function from setup? No, from useEffect.
-                // We need to store handleSignal ref to remove it?
-                // Actually, simplify: define handleSignal INSIDE setup, but we need to remove it.
-                // We'll assign it to a ref or just use a named function outside if possible?
-                // Closure problems.
-                // Let's attach it to a MutableRef or property to clean it up.
                 (window as any)._tempSignalHandler = handleSignal;
 
             } catch (err) {
-                console.error("Error accessing media", err);
-                setPermissionError("Camera/Mic access denied.");
+                console.error("Access denied or API error", err);
+                setPermissionError("Camera/Mic permissions required.");
             }
         };
 
         const startSession = () => {
-            // 1. Get User Media and setup PeerConnection
-            setupMediaAndConnection();
+            setupMediaAndConnection().then(() => {
+                const signal = {
+                    type: 'signal',
+                    target: otherUser.id,
+                    sender: currentUser.id,
+                    payload: { type: 'user_joined' }
+                };
+                window.dispatchEvent(new CustomEvent('send-webrtc-signal', { detail: signal }));
+            });
         };
 
         if ((window as any).SKILLSWAP_SIGNAL_READY) {
@@ -282,15 +311,18 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
             };
             window.addEventListener('skillswap-signal-ready', readyHandler);
 
-            // Fallback timeout in case we missed the event or app is slow
-            setTimeout(() => {
+            // Timeout fallback
+            const timeoutId = setTimeout(() => {
                 if (!peerConnection.current) {
-                    console.warn("Signal ready event timeout - forcing start");
+                    console.warn("Signal timeout - forcing start");
                     startSession();
                 }
-            }, 2000);
+            }, 3000);
 
-            return () => window.removeEventListener('skillswap-signal-ready', readyHandler);
+            return () => {
+                window.removeEventListener('skillswap-signal-ready', readyHandler);
+                clearTimeout(timeoutId);
+            };
         }
 
         return () => {
@@ -298,157 +330,229 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                 window.removeEventListener('webrtc-signal', (window as any)._tempSignalHandler);
                 delete (window as any)._tempSignalHandler;
             }
-
-            // Cleanup streams
-            const stopTracks = (stream: MediaStream | null) => {
-                if (stream) stream.getTracks().forEach(t => t.stop());
-            };
-            // Note: full cleanup handles in handleEndSession, here just stop if unmounts unexpectedly
-            if (cameraStreamRef.current) stopTracks(cameraStreamRef.current);
-            allStreamsRef.current.forEach(stopTracks);
-
+            // Logic handled in handleEndSession, but effectively cleanup here too for unmount.
             if (peerConnection.current) {
                 peerConnection.current.close();
             }
-        };
-    }, []); // Run once
-
-    const handleEndSession = () => {
-        console.log("Ending session, cleaning up streams...");
-        // Explicit cleanup
-        const stopTracks = (stream: MediaStream | null) => {
-            if (stream) {
-                stream.getTracks().forEach(track => {
-                    console.log(`Stopping track: ${track.kind} (${track.id})`);
-                    track.stop();
-                    track.enabled = false;
-                });
+            if (cameraStreamRef.current) {
+                cameraStreamRef.current.getTracks().forEach(t => t.stop());
             }
         };
+    }, []);
 
-        stopTracks(localStream);
-        if (cameraStreamRef.current && cameraStreamRef.current !== localStream) {
-            stopTracks(cameraStreamRef.current);
+    const handleEndSession = () => {
+        console.log("Ending session and cleaning up");
+
+        // Stop all tracks in all tracked streams
+        allStreamsRef.current.forEach(stream => {
+            stream?.getTracks().forEach(t => {
+                t.stop();
+                t.enabled = false;
+            });
+        });
+
+        // Specifically stop camera and local refs
+        if (cameraStreamRef.current) {
+            cameraStreamRef.current.getTracks().forEach(t => t.stop());
         }
-        stopTracks(remoteStream);
-
-        // Nuke all tracked streams
-        if (allStreamsRef.current) {
-            allStreamsRef.current.forEach(s => stopTracks(s));
-            allStreamsRef.current = [];
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
         }
 
         if (peerConnection.current) {
-            console.log("Closing PeerConnection");
             peerConnection.current.close();
             peerConnection.current = null;
         }
+
+        // Reset states
+        setLocalStream(null);
+        setRemoteStream(null);
+        setIsMicOn(false);
+        setIsCameraOn(false);
+
         onEndSession();
     };
+
     const toggleAudio = () => {
-        if (localStream) {
-            localStream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
-            setIsMicOn(prev => !prev);
+        const audioTrack = audioTrackRef.current;
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            setIsMicOn(audioTrack.enabled);
         }
     };
 
     const toggleVideo = () => {
-        if (localStream) {
-            localStream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
-            setIsCameraOn(prev => !prev);
+        const videoTrack = videoTrackRef.current;
+
+        // If screen sharing, toggling video should maybe just toggle the *camera* logic 
+        // but we are hiding camera anyway. 
+        // Standard behavior: Toggle camera on/off.
+
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            setIsCameraOn(videoTrack.enabled);
+
+            // If we are NOT screen sharing, update the local preview visually if needed
+            // But since localStream uses the same track, it might just go black.
+            // That is expected behavior.
         }
     };
 
     const toggleScreenShare = async () => {
+        const pc = peerConnection.current;
+        if (!pc) return;
+
         if (isScreenSharing) {
-            // Revert to Camera
+            // --- STOP SCREEN SHARE ---
             try {
-                // Stop current screen share tracks
-                localStream?.getTracks().forEach(track => track.stop());
+                // 1. Get the screen track and stop it
+                const senders = pc.getSenders();
+                const videoSender = senders.find(s => s.track?.kind === 'video');
 
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                setLocalStream(stream);
-                allStreamsRef.current.push(stream); // Track for cleanup
-
-                // Replace Track in Sender
-                if (peerConnection.current) {
-                    const senders = peerConnection.current.getSenders();
-                    const videoSender = senders.find(s => s.track?.kind === 'video');
-                    if (videoSender) {
-                        videoSender.replaceTrack(stream.getVideoTracks()[0]);
-                    }
-                    // Audio track might be replaced automatically or simpler to replace too
-                    const audioSender = senders.find(s => s.track?.kind === 'audio');
-                    if (audioSender) {
-                        audioSender.replaceTrack(stream.getAudioTracks()[0]);
-                    }
+                if (videoSender && videoSender.track) {
+                    videoSender.track.stop();
                 }
+
+                // 2. Restore Camera Track (Robust)
+                let camTrack = videoTrackRef.current;
+                let streamToRestore = cameraStreamRef.current;
+
+                // CHECK VALIDITY: If track is ended or missing, re-acquire
+                if (!camTrack || camTrack.readyState === 'ended' || !streamToRestore) {
+                    console.log("Camera track ended or missing. Re-acquiring...");
+                    const newStream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                        audio: true // Start audio too to keep sync, will replace
+                    });
+                    camTrack = newStream.getVideoTracks()[0];
+
+                    // Update refs
+                    cameraStreamRef.current = newStream;
+                    videoTrackRef.current = camTrack;
+                    // Update Audio Ref too if needed
+                    const newAudio = newStream.getAudioTracks()[0];
+                    if (newAudio) {
+                        audioTrackRef.current = newAudio;
+                        const audioSender = senders.find(s => s.track?.kind === 'audio');
+                        if (audioSender) audioSender.replaceTrack(newAudio);
+                    }
+
+                    streamToRestore = newStream;
+                    allStreamsRef.current.push(newStream);
+                }
+
+                // Ensure enabled state matches UI
+                camTrack.enabled = isCameraOn;
+
+                if (videoSender) {
+                    await videoSender.replaceTrack(camTrack);
+                }
+
+                // 3. Restore Local Preview
+                setLocalStream(streamToRestore);
 
                 setIsScreenSharing(false);
-                setIsCameraOn(true);
-
-                // Signal view mode change
-                const signal = {
-                    type: 'signal',
-                    target: otherUser.id,
-                    sender: currentUser.id,
-                    payload: { type: 'mode_change', mode: 'whiteboard' }
-                };
-                window.dispatchEvent(new CustomEvent('send-webrtc-signal', { detail: signal }));
                 setViewMode('whiteboard');
 
-            } catch (e) {
-                console.error("Failed to revert to camera", e);
-            }
-        } else {
-            // Start Screen Share
-            try {
-                // Stop current camera tracks
-                localStream?.getTracks().forEach(track => track.stop());
-
-                const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                allStreamsRef.current.push(displayStream); // Track for cleanup
-                const videoTrack = displayStream.getVideoTracks()[0];
-
-                // Merge audio if needed, for now simplified just screen video + existing audio
-                // Better: create composite or just replace video track
-                const mixedStream = new MediaStream([videoTrack]);
-                if (localStream) {
-                    localStream.getAudioTracks().forEach(t => mixedStream.addTrack(t));
-                }
-                setLocalStream(mixedStream); // Show locally
-
-                // Replace Track in PeerConnection
-                if (peerConnection.current) {
-                    const senders = peerConnection.current.getSenders();
-                    const videoSender = senders.find(s => s.track?.kind === 'video');
-                    if (videoSender) {
-                        videoSender.replaceTrack(videoTrack);
+                // 4. Signal Mode Change
+                window.dispatchEvent(new CustomEvent('send-webrtc-signal', {
+                    detail: {
+                        type: 'signal',
+                        target: otherUser.id,
+                        sender: currentUser.id,
+                        payload: { type: 'mode_change', mode: 'whiteboard' }
                     }
+                }));
+
+            } catch (e) {
+                console.error("Error stopping screen share:", e);
+            }
+
+        } else {
+            // --- START SCREEN SHARE ---
+            try {
+                // 1. Get Screen Stream
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: 15 },
+                    audio: false
+                });
+
+                const screenTrack = displayStream.getVideoTracks()[0];
+                allStreamsRef.current.push(displayStream);
+
+                // 2. Replace Track
+                const senders = pc.getSenders();
+                const videoSender = senders.find(s => s.track?.kind === 'video');
+
+                if (videoSender) {
+                    await videoSender.replaceTrack(screenTrack);
                 }
+
+                // 3. Update Local Preview
+                setLocalStream(displayStream);
 
                 setIsScreenSharing(true);
+                setViewMode('screen_share');
 
-                // Signal view mode change
-                const signal = {
-                    type: 'signal',
-                    target: otherUser.id,
-                    sender: currentUser.id,
-                    payload: { type: 'mode_change', mode: 'screen_share' }
-                };
-                window.dispatchEvent(new CustomEvent('send-webrtc-signal', { detail: signal }));
-                setViewMode('screen_share'); // Technically I see my whiteboard, they see screen. 
-                // Wait, if I share screen, *I* want to see my screen? No, I see my screen natively. 
-                // The requester said: "see on my camera space also on dedicated space" logic.
-                // If I share, I likely want the main view to remain Whiteboard for me, or follow suit.
-                // Let's assume sync view.
+                // 4. Signal Mode Change
+                window.dispatchEvent(new CustomEvent('send-webrtc-signal', {
+                    detail: {
+                        type: 'signal',
+                        target: otherUser.id,
+                        sender: currentUser.id,
+                        payload: { type: 'mode_change', mode: 'screen_share' }
+                    }
+                }));
 
-                videoTrack.onended = () => {
-                    toggleScreenShare();
+                // 5. Handle "Stop sharing" from browser bar
+                screenTrack.onended = () => {
+                    console.log("Screen share ended natively");
+                    // Execute robust restoration inline
+                    const restore = async () => {
+                        const pc = peerConnection.current;
+                        const senders = pc ? pc.getSenders() : [];
+                        const videoSender = senders.find(s => s.track?.kind === 'video');
+
+                        let camTrack = videoTrackRef.current;
+                        let streamToRestore = cameraStreamRef.current;
+
+                        if (!camTrack || camTrack.readyState === 'ended' || !streamToRestore) {
+                            const newStream = await navigator.mediaDevices.getUserMedia({
+                                video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                                audio: true
+                            });
+                            camTrack = newStream.getVideoTracks()[0];
+                            cameraStreamRef.current = newStream;
+                            videoTrackRef.current = camTrack;
+                            streamToRestore = newStream;
+
+                            const newAudio = newStream.getAudioTracks()[0];
+                            if (newAudio) {
+                                audioTrackRef.current = newAudio;
+                                const audioSender = senders.find(s => s.track?.kind === 'audio');
+                                if (audioSender) audioSender.replaceTrack(newAudio);
+                            }
+                        }
+
+                        if (videoSender) videoSender.replaceTrack(camTrack).catch(console.error);
+                        setLocalStream(streamToRestore);
+                        setIsScreenSharing(false);
+                        setViewMode('whiteboard');
+
+                        window.dispatchEvent(new CustomEvent('send-webrtc-signal', {
+                            detail: {
+                                type: 'signal',
+                                target: otherUser.id,
+                                sender: currentUser.id,
+                                payload: { type: 'mode_change', mode: 'whiteboard' }
+                            }
+                        }));
+                    };
+                    restore();
                 };
 
             } catch (err) {
-                console.error("Error sharing screen:", err);
+                console.error("Error starting screen share:", err);
             }
         }
     };
@@ -509,15 +613,12 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({ session, currentUser,
                         // Screen Share View (Full Size)
                         <div className="w-full h-full flex items-center justify-center bg-black">
                             <VideoPlayer
-                                stream={remoteStream} // If I am receiver, I see remote (screen). If I am sender?
-                                // If I am sender, I want to see what I am sharing (localStream)
-                                // We need to know WHO is sharing. 
-                                // Simplified: if isScreenSharing is true, I show localStream. Else remoteStream.
-                                muted={true} // Main view usually muted to avoid echo if it's me
-                                label={isScreenSharing ? "You (Screen)" : `${otherUser.name} (Screen)`}
+                                stream={isScreenSharing ? localStream : remoteStream}
+                                muted={true}
+                                label={isScreenSharing ? "You (Presenting)" : `${otherUser.name} (Screen)`}
                                 isLocal={isScreenSharing}
                                 isMicOn={true}
-                                isFocused={false} // Custom style
+                                isFocused={false}
                                 objectFit="contain"
                             />
                         </div>
