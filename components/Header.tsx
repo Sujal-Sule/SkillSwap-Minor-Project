@@ -69,8 +69,6 @@ const Header: React.FC<HeaderProps> = ({ currentUser, isAdmin, logout, theme, to
 
                     {/* Right side controls */}
                     <div className="flex items-center space-x-4">
-                        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                        <div className="w-px h-6 bg-slate-300/20 dark:bg-slate-700/50"></div>
                         <div className="flex items-center space-x-4">
                             <div className="text-right hidden sm:block">
                                 <div className="text-sm font-semibold text-white">{currentUser.name}</div>
