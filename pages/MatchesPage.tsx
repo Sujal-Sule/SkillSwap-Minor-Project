@@ -1,16 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import type { User, Skill, ConnectionRequest } from '../types';
-import SkillTag from '../components/SkillTag';
-import { ChatBubbleLeftRightIcon, PlusIcon, MagnifyingGlassIcon } from '../components/icons';
-import GlowingUserCard from '../components/GlowingUserCard';
-import GlowBorderCard from '../components/GlowBorderCard';
+import type { User, ConnectionRequest } from '../types';
+import { ChatBubbleLeftRightIcon, PlusIcon, SparklesIcon } from '../components/icons';
+import PremiumUserCard from '../components/PremiumUserCard';
+import TopMatchHero from '../components/TopMatchHero';
+import MatchFilterBar from '../components/MatchFilterBar';
 import UserProfileModal from '../components/UserProfileModal';
 import { categories } from '../data/categories';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MatchesPageProps {
     currentUser: User;
     users: User[];
-    allUsers: User[]; // New prop for lookup
+    allUsers: User[];
     startChat: (user: User) => void;
     connectionRequests: ConnectionRequest[];
     sendConnectionRequest: (receiverId: string) => void;
@@ -28,9 +29,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
     const [processingId, setProcessingId] = useState<string | null>(null);
 
     const { topMatches, otherMatches } = useMemo(() => {
-        const connectedUserIds = new Set(currentUser.connections);
-
-        // Show everyone except the current user (connected users will show "Chat" button)
+        // Show everyone except the current user
         let filteredUsers = users.filter(user => user.id !== currentUser.id);
 
         // 1. Search Term Filter
@@ -80,16 +79,12 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
 
         const sortedMatches = matchesWithScores.sort((a, b) => b.matchScore - a.matchScore);
 
-        // Logic Change: 
-        // "Top Matches" (Glowing) should ONLY be users who teach something the current user wants to learn (Direct Match).
-        // Users who only want to learn from the current user (Reverse Match) or have no skill match go to "Other".
+        // Logic: Top Matches are those who teach something user wants (Direct Match)
         const directMatches = sortedMatches.filter(m => m.matchingSkills.length > 0);
         const nonDirectMatches = sortedMatches.filter(m => m.matchingSkills.length === 0);
 
         // Take up to 3 direct matches for the spotlight
         const top = directMatches.slice(0, 3);
-
-        // The rest of the direct matches + all non-direct matches go to the standard list
         const others = [...directMatches.slice(3), ...nonDirectMatches];
 
         return { topMatches: top, otherMatches: others };
@@ -101,16 +96,21 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
         action();
     };
 
-    const getButtonState = (user: User) => {
+    const getButtonState = (user: User, isHero: boolean = false) => {
         const isConnected = currentUser.connections.includes(user.id);
+        const baseClasses = "w-full flex items-center justify-center gap-2 font-bold transition-all active:scale-95";
+
+        // Hero buttons are larger/more prominent
+        const sizeClasses = isHero ? "py-3 px-8 text-base rounded-xl shadow-xl" : "py-2.5 px-4 text-sm rounded-xl shadow-lg";
+
         if (isConnected) {
             return (
                 <button
                     onClick={(e) => handleActionClick(e, () => startChat(user))}
-                    className="w-full flex items-center justify-center bg-sky-600 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-sky-700 transition-colors"
+                    className={`${baseClasses} ${sizeClasses} bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:from-sky-400 hover:to-blue-500 shadow-sky-500/20`}
                 >
-                    <ChatBubbleLeftRightIcon className="w-5 h-5 mr-2" />
-                    Chat
+                    <ChatBubbleLeftRightIcon className={isHero ? "w-6 h-6" : "w-5 h-5"} />
+                    Chat Now
                 </button>
             );
         }
@@ -119,8 +119,8 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
         if (incomingRequest) {
             return (
                 <div className="flex gap-2">
-                    <button onClick={(e) => handleActionClick(e, () => handleRequest(incomingRequest.id, 'accepted'))} className="flex-1 w-full px-4 py-2 text-sm font-semibold bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">Accept</button>
-                    <button onClick={(e) => handleActionClick(e, () => handleRequest(incomingRequest.id, 'declined'))} className="flex-1 w-full px-4 py-2 text-sm font-semibold bg-slate-600 text-slate-200 rounded-lg hover:bg-slate-500 transition-colors">Decline</button>
+                    <button onClick={(e) => handleActionClick(e, () => handleRequest(incomingRequest.id, 'accepted'))} className={`flex-1 ${sizeClasses} bg-emerald-500 text-white hover:bg-emerald-400 shadow-emerald-500/20`}>Accept</button>
+                    <button onClick={(e) => handleActionClick(e, () => handleRequest(incomingRequest.id, 'declined'))} className={`flex-1 ${sizeClasses} bg-slate-700 text-slate-300 hover:bg-slate-600`}>Decline</button>
                 </div>
             );
         }
@@ -132,10 +132,7 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
 
         if (hasPendingRequest) {
             return (
-                <button
-                    disabled
-                    className="w-full flex items-center justify-center bg-slate-700 text-slate-400 font-bold py-2.5 px-4 rounded-lg cursor-not-allowed"
-                >
+                <button disabled className={`${baseClasses} ${sizeClasses} bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed`}>
                     Request Sent
                 </button>
             );
@@ -153,182 +150,127 @@ const MatchesPage: React.FC<MatchesPageProps> = ({ currentUser, users, allUsers,
                         setProcessingId(null);
                     });
                 }}
-                className={`w-full flex items-center justify-center font-bold py-2.5 px-4 rounded-lg transition-colors ${isProcessing
-                    ? 'bg-slate-700 text-slate-400 cursor-wait'
-                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                className={`${baseClasses} ${sizeClasses} ${isProcessing
+                    ? 'bg-slate-800 text-slate-500 cursor-wait'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 shadow-orange-500/20'
                     }`}
             >
                 {isProcessing ? (
-                    <span className="flex items-center">
-                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Sending...
-                    </span>
+                    <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                     <>
-                        <PlusIcon className="w-5 h-5 mr-2" />
-                        Request
+                        <PlusIcon className={isHero ? "w-6 h-6 mr-2" : "w-5 h-5 mr-2"} />
+                        Connect
                     </>
                 )}
             </button>
         );
     };
 
-    const renderUserCardContent = (user: User, matchingSkills: Skill[]) => (
-        <>
-            <div>
-                <div className="flex items-center mb-4">
-                    <img src={user.avatarUrl} alt={user.name} className="w-16 h-16 rounded-full mr-4 object-cover border-2 border-slate-600" />
-                    <div>
-                        <h3 className="text-xl font-bold text-white">{user.name}</h3>
-                        {/* Online tag removed as per request */}
-                    </div>
-                </div>
-                <p className="text-slate-400 mb-4 text-sm line-clamp-2">{user.bio}</p>
-                <div>
-                    <h4 className="font-semibold mb-2 text-slate-300">Matching Skills:</h4>
-                    <div className="flex flex-wrap min-h-[2.5rem] items-center">
-                        {matchingSkills.length > 0 ? (
-                            matchingSkills.map(skill => (
-                                <SkillTag key={skill.id} skill={skill} variant="learn" />
-                            ))
-                        ) : (
-                            <p className="text-sm text-slate-500 italic px-1">No direct skill matches</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <div className="mt-6">
-                {getButtonState(user)}
-            </div>
-        </>
-    );
-
-    const allMatches = [...topMatches, ...otherMatches];
-
     const pageTitle = categoryFilter
-        ? `Mentors for ${categories.find(c => c.id === categoryFilter)?.name}`
-        : "Your Top Matches";
-
-    const noMatchesMessage = () => {
-        return (
-            <>
-                <p className="text-slate-400">No users found.</p>
-                <p className="text-slate-500 mt-2">Try adjusting your filters to see more results.</p>
-            </>
-        )
-    };
-
+        ? `${categories.find(c => c.id === categoryFilter)?.name} Mentors`
+        : "Discover Mentors";
 
     return (
-        <div className="container mx-auto">
-            <h1 className="text-3xl font-bold text-slate-100 mb-6">{pageTitle}</h1>
+        <div className="pt-36 pb-20 px-6 max-w-[1240px] mx-auto min-h-screen">
+            {/* Page Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-10"
+            >
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">{pageTitle}</h1>
+                <p className="text-slate-400 text-lg">Find the perfect partner to swap skills with.</p>
+            </motion.div>
 
             {/* Filter Bar */}
-            <div className="mb-8 p-4 bg-slate-800/50 border border-slate-700 rounded-xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    {/* Search Input */}
-                    <div>
-                        <label htmlFor="search-matches" className="block text-sm font-medium text-slate-400 mb-1">Search by Name or Bio</label>
-                        <div className="relative">
-                            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                                id="search-matches"
-                                type="text"
-                                placeholder="e.g., 'React' or 'David'"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-slate-900 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 border border-slate-700"
-                            />
-                        </div>
-                    </div>
+            <MatchFilterBar
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                onlineStatusFilter={onlineStatusFilter}
+                setOnlineStatusFilter={setOnlineStatusFilter}
+                tokenRangeFilter={tokenRangeFilter}
+                setTokenRangeFilter={setTokenRangeFilter}
+            />
 
-                    {/* Category Filter */}
-                    <div>
-                        <label htmlFor="category-filter" className="block text-sm font-medium text-slate-400 mb-1">Category</label>
-                        <select
-                            id="category-filter"
-                            value={categoryFilter || ''}
-                            onChange={(e) => setCategoryFilter(e.target.value || null)}
-                            className="w-full bg-slate-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 border border-slate-700 h-10"
+            <AnimatePresence mode="wait">
+                <div className="flex flex-col gap-16 md:gap-20">
+                    {/* Top Matches Section */}
+                    {topMatches.length > 0 && (
+                        <motion.section
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                         >
-                            <option value="">All Categories</option>
-                            {categories.filter(c => c.id !== 'c5').map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Online Status Filter */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
-                        <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 h-10 items-center">
-                            <button
-                                onClick={() => setOnlineStatusFilter('all')}
-                                className={`flex-1 text-sm py-1 rounded-md transition-colors duration-200 ${onlineStatusFilter === 'all' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
-                            >
-                                All
-                            </button>
-                            <button
-                                onClick={() => setOnlineStatusFilter('online')}
-                                className={`flex-1 text-sm py-1 rounded-md transition-colors duration-200 ${onlineStatusFilter === 'online' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
-                            >
-                                Online
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Token Balance Filter */}
-                    <div>
-                        <label htmlFor="token-filter" className="block text-sm font-medium text-slate-400 mb-1">Token Balance</label>
-                        <select
-                            id="token-filter"
-                            value={tokenRangeFilter}
-                            onChange={(e) => setTokenRangeFilter(e.target.value)}
-                            className="w-full bg-slate-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 border border-slate-700 h-10"
-                        >
-                            <option value="any">Any</option>
-                            <option value="5">5+</option>
-                            <option value="10">10+</option>
-                            <option value="20">20+</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {topMatches.map(({ user, matchingSkills }) => (
-                    <GlowBorderCard key={user.id} onClick={() => setSelectedUser(user)}>
-                        <div
-                            className="p-6 flex flex-col justify-between h-full relative cursor-pointer"
-                        >
-                            <div className="absolute top-3 right-3 bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full z-10 shadow-lg border border-white/20">
-                                Top Match
+                            <div className="flex items-center gap-3 mb-8">
+                                <SparklesIcon className="w-6 h-6 text-amber-400" />
+                                <h2 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">Top Matches For You</h2>
                             </div>
-                            {renderUserCardContent(user, matchingSkills)}
-                        </div>
-                    </GlowBorderCard>
-                ))}
-                {otherMatches.map(({ user, matchingSkills }) => (
-                    <div
-                        key={user.id}
-                        className="bg-slate-800 rounded-xl shadow-md border border-slate-700 p-6 flex flex-col justify-between transition-transform transform hover:-translate-y-1 cursor-pointer hover:bg-slate-700/50"
-                        onClick={() => setSelectedUser(user)}
+                            <div className="flex flex-col gap-8">
+                                {topMatches.map(({ user, matchingSkills }) => (
+                                    <TopMatchHero
+                                        key={user.id}
+                                        user={user}
+                                        matchingSkills={matchingSkills}
+                                        actionButton={getButtonState(user, true)}
+                                        onClick={() => setSelectedUser(user)}
+                                    />
+                                ))}
+                            </div>
+                        </motion.section>
+                    )}
+
+                    {/* All Members Section */}
+                    <motion.section
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
                     >
-                        {renderUserCardContent(user, matchingSkills)}
-                    </div>
-                ))}
-                {allMatches.length === 0 && (
-                    <div className="col-span-full text-center py-12 bg-slate-800 rounded-xl border border-dashed border-slate-700">
-                        {noMatchesMessage()}
-                    </div>
-                )}
-            </div>
+                        {otherMatches.length > 0 && (
+                            <div className="mb-8 pl-1 border-l-4 border-sky-500/50">
+                                <h2 className="text-xl md:text-2xl font-bold text-slate-200 pl-3">All Members</h2>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+                            {otherMatches.map(({ user, matchingSkills }) => (
+                                <PremiumUserCard
+                                    key={user.id}
+                                    user={user}
+                                    matchingSkills={matchingSkills}
+                                    actionButton={getButtonState(user, false)}
+                                    onClick={() => setSelectedUser(user)}
+                                />
+                            ))}
+                        </div>
+
+                        {topMatches.length === 0 && otherMatches.length === 0 && (
+                            <div className="text-center py-20 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700/50">
+                                <p className="text-slate-400 text-lg mb-2">No matches found.</p>
+                                <p className="text-slate-500">Try adjusting your filters or search terms.</p>
+                                <button
+                                    onClick={() => {
+                                        setCategoryFilter(null);
+                                        setSearchTerm('');
+                                        setOnlineStatusFilter('all');
+                                    }}
+                                    className="mt-6 text-sky-400 hover:text-sky-300 font-medium hover:underline"
+                                >
+                                    Clear all filters
+                                </button>
+                            </div>
+                        )}
+                    </motion.section>
+                </div>
+            </AnimatePresence>
 
             <UserProfileModal
                 isOpen={!!selectedUser}
                 onClose={() => setSelectedUser(null)}
                 user={selectedUser}
-                users={allUsers} // Pass ALL users for complete rater lookup
+                users={allUsers}
             />
         </div>
     );

@@ -11,6 +11,8 @@ async def get_current_user(authorization: str = Header(None)):
     
     token = authorization.split(" ")[1]
     decoded_token = verify_token(token)
+
+
     
     if not decoded_token:
         raise HTTPException(

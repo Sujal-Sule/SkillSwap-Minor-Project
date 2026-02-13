@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { Skill } from '../types';
 import { categories } from '../data/categories';
 
@@ -34,13 +35,26 @@ const SkillTag: React.FC<SkillTagProps> = ({ skill, variant = 'teach', className
             learn: 'bg-transparent text-slate-600 dark:text-slate-400 border border-slate-400 dark:border-slate-500'
         }
     };
-    
+
     const tagClass = colorClasses[color as keyof typeof colorClasses][variant] || colorClasses.slate.teach;
 
+    // Dynamic shadow color based on category
+    const shadowColor = {
+        sky: 'hover:shadow-sky-500/25',
+        purple: 'hover:shadow-purple-500/25',
+        emerald: 'hover:shadow-emerald-500/25',
+        rose: 'hover:shadow-rose-500/25',
+        slate: 'hover:shadow-slate-500/25'
+    }[color as string] || 'hover:shadow-slate-500/25';
+
     return (
-        <span className={`inline-block text-sm font-medium mr-2 mb-2 px-3 py-1 rounded-full ${tagClass} ${className}`}>
+        <motion.span
+            className={`inline-block text-sm font-medium mr-2 mb-2 px-4 py-1.5 rounded-full transition-shadow duration-300 cursor-default ${tagClass} ${shadowColor} hover:shadow-lg ${className}`}
+            whileHover={{ y: -2, scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+        >
             {skill.name}
-        </span>
+        </motion.span>
     );
 };
 

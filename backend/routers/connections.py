@@ -6,6 +6,7 @@ from firebase_admin import firestore
 from ..models import ConnectionRequest, UserInDB
 from ..dependencies import get_current_user
 from bson import ObjectId
+from .notifications import create_notification
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -39,6 +40,15 @@ async def send_connection_request(receiverId: str = Body(..., embed=True), curre
     )
     res = await db.connections.insert_one(new_request.model_dump(by_alias=True, exclude={"id"}))
     created = await db.connections.find_one({"_id": res.inserted_id})
+    
+    # Notify Receiver
+    create_notification(
+        user_id=receiverId,
+        type="connection_request",
+        message=f"New connection request from {current_user.name}",
+        reference_id=str(created["_id"])
+    )
+    
     return ConnectionRequest(**created)
 
 @router.get("/", response_model=List[ConnectionRequest])
@@ -79,6 +89,15 @@ async def accept_connection(request_id: str, current_user: UserInDB = Depends(ge
     fs_db.collection('users').document(req['receiverId']).update({"connections": firestore.ArrayUnion([req['senderId']])})
     
     updated = await db.connections.find_one({"_id": req['_id']})
+    
+    # Notify Sender that request was accepted
+    create_notification(
+        user_id=req['senderId'],
+        type="connection_accepted",
+        message=f"{current_user.name} accepted your connection request",
+        reference_id=str(req['_id'])
+    )
+    
     return ConnectionRequest(**updated)
 
 @router.delete("/{request_id}")

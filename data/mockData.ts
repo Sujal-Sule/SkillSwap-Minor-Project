@@ -157,24 +157,25 @@ export const messages: Message[] = [
         text: "Hey Alex! I saw your profile and I'm really interested in learning about 'Advanced JavaScript'. I'm working on a personal project and I'm a bit stuck.",
         timestamp: new Date(Date.now() - 1000 * 60 * 5),
         messageType: 'text',
+        isRead: false,
     },
     {
         id: 'm2',
         senderId: 'u1',
         receiverId: 'u2',
         text: "Hi Maria! Absolutely, I'd be happy to help. 'Advanced JavaScript' is one of my favorite topics. What specifically are you struggling with?",
-        timestamp: new
- 
-Date(Date.now() - 1000 * 60 * 4),
+        timestamp: new Date(Date.now() - 1000 * 60 * 4),
         messageType: 'text',
+        isRead: true,
     },
-     {
+    {
         id: 'm3',
         senderId: 'u2',
         receiverId: 'u1',
         text: "Great! Let's schedule something then. I'm free tomorrow afternoon or Friday morning. Would that work?",
         timestamp: new Date(Date.now() - 1000 * 60 * 2),
         messageType: 'text',
+        isRead: false,
     },
     {
         id: 'm-ai-1',
@@ -182,7 +183,8 @@ Date(Date.now() - 1000 * 60 * 4),
         receiverId: 'u2',
         text: "Seems like you're discussing 'Advanced JavaScript'. Want to propose a session?",
         timestamp: new Date(Date.now() - 1000 * 60 * 1),
-        messageType: 'ai_suggestion'
+        messageType: 'ai_suggestion',
+        isRead: true,
     },
     {
         id: 'm-proposal-1',
@@ -192,6 +194,7 @@ Date(Date.now() - 1000 * 60 * 4),
         timestamp: new Date(Date.now() - 1000 * 30),
         messageType: 'session_card',
         session: proposedSession,
+        isRead: true,
     },
     {
         id: 'm-david-1',
@@ -200,6 +203,7 @@ Date(Date.now() - 1000 * 60 * 4),
         text: 'Just sent over a proposal for the project management session.',
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
         messageType: 'text',
+        isRead: true,
     },
     {
         id: 'm-priya-1',
@@ -208,6 +212,7 @@ Date(Date.now() - 1000 * 60 * 4),
         text: 'Can we reschedule for tomorrow? Something came up.',
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1),
         messageType: 'text',
+        isRead: false,
     }
 ];
 
@@ -267,7 +272,7 @@ export const connectionRequests: ConnectionRequest[] = [
 ];
 
 export const tokenTransactions: TokenTransaction[] = [
-     {
+    {
         id: 'tt1',
         userId: 'u3',
         type: 'earned',

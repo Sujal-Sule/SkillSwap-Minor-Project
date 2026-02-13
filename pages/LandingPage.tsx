@@ -1,302 +1,667 @@
-import React, { useRef, useContext } from 'react';
-import { motion, type Variants } from 'framer-motion';
-import { AuthContext } from '../context/AuthContext';
-import GlassyButton from '../components/GlassyButton';
-import Logo from '../components/Logo';
-import PressureText from '../components/PressureText';
-import AnimatedText from '../components/AnimatedText';
-import { categories } from '../data/categories';
-import { skills } from '../data/mockData';
-import SkillTag from '../components/SkillTag';
-import { AcademicCapIcon, SparklesIcon, TokenIcon, UsersIcon } from '../components/icons';
-import type { Rating, User } from '../types';
-import DraggableTestimonials from '../components/DraggableTestimonials';
-
+import React, { useRef, useState } from "react";
+import { motion, type Variants, AnimatePresence } from "framer-motion";
+import GlassyButton from "../components/GlassyButton";
+import Logo from "../components/Logo";
+import PressureText from "../components/PressureText";
+import AnimatedText from "../components/AnimatedText";
+import { categories } from "../data/categories";
+import { skills } from "../data/mockData";
+import SkillTag from "../components/SkillTag";
+import {
+  AcademicCapIcon,
+  SparklesIcon,
+  TokenIcon,
+  UsersIcon,
+} from "../components/icons";
+import type { Rating, User } from "../types";
+import DraggableTestimonials from "../components/DraggableTestimonials";
 
 interface LandingPageProps {
-    onGetStarted: () => void;
+  onGetStarted: () => void;
 }
 
-// Mock Data for Landing Page
-const landingPageTestimonials: (Rating & { rater: User })[] = [
+// Mock Data for Landing Page — rewritten with concrete outcomes
+const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
+  [
     {
-        id: 'lp-r1',
-        sessionId: 's-lp1',
-        raterId: 'u-lp1',
-        ratedId: 'platform',
-        stars: 5,
-        feedback: "SkillSwap is revolutionary. I taught a weekend workshop on React and used the tokens to finally learn how to play guitar. The community is fantastic!",
-        rater: { id: 'u-lp1', name: 'Alex Johnson', avatarUrl: 'https://picsum.photos/seed/alex/200' } as User,
+      id: "lp-r1",
+      sessionId: "s-lp1",
+      raterId: "u-lp1",
+      ratedId: "platform",
+      stars: 5,
+      feedback:
+        "Taught a weekend workshop on React and used the tokens to finally learn guitar. Best trade I've ever made — saved me hundreds on music lessons.",
+      outcome: "Learned Guitar in 4 Weeks",
+      rater: {
+        id: "u-lp1",
+        name: "Alex Johnson",
+        avatarUrl: "https://picsum.photos/seed/alex/200",
+      } as User,
     },
     {
-        id: 'lp-r2',
-        sessionId: 's-lp2',
-        raterId: 'u-lp2',
-        ratedId: 'platform',
-        stars: 5,
-        feedback: "As a designer, I was able to connect with a developer to bring my portfolio to life. The 1-on-1 sessions are incredibly valuable. Highly recommend.",
-        rater: { id: 'u-lp2', name: 'Maria Garcia', avatarUrl: 'https://picsum.photos/seed/maria/200' } as User,
+      id: "lp-r2",
+      sessionId: "s-lp2",
+      raterId: "u-lp2",
+      ratedId: "platform",
+      stars: 5,
+      feedback:
+        "As a designer, I connected with a developer to build my portfolio. The 1-on-1 sessions were worth more than any $500 Udemy course.",
+      outcome: "Saved $500 on Courses",
+      rater: {
+        id: "u-lp2",
+        name: "Maria Garcia",
+        avatarUrl: "https://picsum.photos/seed/maria/200",
+      } as User,
     },
     {
-        id: 'lp-r3',
-        sessionId: 's-lp3',
-        raterId: 'u-lp3',
-        ratedId: 'platform',
-        stars: 4,
-        feedback: "The AI Coach feature is a game-changer for keeping me on track with my learning goals. It helped me structure my Python learning plan perfectly.",
-        rater: { id: 'u-lp3', name: 'Sam Chen', avatarUrl: 'https://picsum.photos/seed/sam/200' } as User,
+      id: "lp-r3",
+      sessionId: "s-lp3",
+      raterId: "u-lp3",
+      ratedId: "platform",
+      stars: 5,
+      feedback:
+        "The AI Coach planned my Python learning path perfectly. Finished in 2 weeks instead of 2 months. Seriously a game-changer.",
+      outcome: "Learned Python in 2 Weeks",
+      rater: {
+        id: "u-lp3",
+        name: "Sam Chen",
+        avatarUrl: "https://picsum.photos/seed/sam/200",
+      } as User,
     },
-     {
-        id: 'lp-r4',
-        sessionId: 's-lp4',
-        raterId: 'u-lp4',
-        ratedId: 'platform',
-        stars: 5,
-        feedback: "I love that my knowledge has tangible value here. Earning tokens feels rewarding, and spending them on new skills is even better. The platform is super intuitive.",
-        rater: { id: 'u-lp4', name: 'Priya Patel', avatarUrl: 'https://picsum.photos/seed/priya/200' } as User,
-    }
-];
-
+    {
+      id: "lp-r4",
+      sessionId: "s-lp4",
+      raterId: "u-lp4",
+      ratedId: "platform",
+      stars: 5,
+      feedback:
+        "Went from zero to deploying my first project. The live sessions made all the difference — real feedback from real people, not just YouTube comments.",
+      outcome: "Deployed First Project",
+      rater: {
+        id: "u-lp4",
+        name: "Priya Patel",
+        avatarUrl: "https://picsum.photos/seed/priya/200",
+      } as User,
+    },
+  ];
 
 // Animation Variants
-// FIX: Added 'Variants' type to fix 'ease' property type error.
 const sectionVariants: Variants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.6,
-            ease: 'easeOut',
-            staggerChildren: 0.2
-        },
+  hidden: { opacity: 0, y: 50 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: "easeOut",
+      staggerChildren: 0.2,
     },
+  },
 };
 
-// FIX: Added 'Variants' type to fix 'ease' property type error.
 const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
-
 
 // Section Components
 const HeroSection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            containerRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
-            containerRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
-        }
-    };
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      containerRef.current.style.setProperty(
+        "--mouse-x",
+        `${e.clientX - rect.left}px`,
+      );
+      containerRef.current.style.setProperty(
+        "--mouse-y",
+        `${e.clientY - rect.top}px`,
+      );
+    }
+  };
 
-    return (
-        <motion.div
-            ref={containerRef}
-            onMouseMove={handleMouseMove}
-            className="spotlight-bg relative min-h-screen w-full flex flex-col items-center justify-center text-center px-4 overflow-hidden"
-            variants={sectionVariants}
-            initial="hidden"
-            animate="visible"
+  const scrollToHowItWorks = () => {
+    const element = document.getElementById("how-it-works");
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <motion.div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      className="spotlight-bg relative min-h-screen w-full flex flex-col items-center justify-center text-center px-4 overflow-hidden pt-20"
+      variants={sectionVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Small Pre-Header (Top Line) */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <span className="py-2 px-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-semibold border border-slate-200 dark:border-slate-700">
+          Built by learners. For learners.
+        </span>
+      </motion.div>
+
+      {/* Main Headline */}
+      <motion.h1
+        variants={itemVariants}
+        className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-5xl leading-tight"
+      >
+        We Couldn’t Afford to Learn. <br className="hidden md:block" />
+        So We Built a Way to <span className="gradient-text">
+          Swap Skills
+        </span>{" "}
+        Instead.
+      </motion.h1>
+
+      {/* Subheadline */}
+      <motion.p
+        variants={itemVariants}
+        className="mt-8 text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed"
+      >
+        SkillSwap was created for students, creators, and curious minds who have
+        something to teach but can't keep paying for expensive courses.
+        <br className="hidden md:block" />
+        <span className="block mt-4 font-medium text-slate-800 dark:text-slate-100">
+          Teach what you know. Earn skill tokens. Learn what you don't. No money
+          required.
+        </span>
+      </motion.p>
+
+      {/* Buttons */}
+      <motion.div
+        variants={itemVariants}
+        className="mt-12 flex flex-col sm:flex-row items-center gap-6"
+      >
+        <GlassyButton
+          text="Start Swapping Skills — Free"
+          onClick={onGetStarted}
+          className="w-full sm:w-auto min-w-[200px]"
+        />
+        <button
+          onClick={scrollToHowItWorks}
+          className="px-8 py-4 rounded-full border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-all hover:border-sky-500 hover:text-sky-500 dark:hover:border-sky-400 dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
         >
-            <motion.div variants={itemVariants} className="mb-8">
-                <Logo size={128} />
-            </motion.div>
-            <motion.h1 
-                variants={itemVariants} 
-                className="text-5xl md:text-7xl font-extrabold tracking-tight gradient-text variable-font"
-            >
-                <PressureText text="The New Economy of Knowledge" />
-            </motion.h1>
-            <AnimatedText
-                text="Trade your skills, not your time. SkillSwap is a peer-to-peer platform where you earn by teaching and spend by learning."
-                className="mt-6 max-w-2xl text-lg text-slate-400"
-                delay={0.5}
-            />
-            <motion.div variants={itemVariants} className="mt-10">
-                <GlassyButton text="Explore the Platform" onClick={onGetStarted} />
-            </motion.div>
-        </motion.div>
-    );
+          See How It Works
+        </button>
+      </motion.div>
+
+      {/* Trust Line */}
+      <motion.p
+        variants={itemVariants}
+        className="mt-8 text-sm text-slate-500 dark:text-slate-400 font-medium"
+      >
+        No credit card • Real people • 1 hour taught = 1 hour learned
+      </motion.p>
+    </motion.div>
+  );
 };
 
 const HowItWorksSection = () => {
-    const steps = [
-        { icon: AcademicCapIcon, title: 'Teach & Share', description: 'Share your expertise in live 1-on-1 sessions. Help others grow and solidify your own knowledge.' },
-        { icon: TokenIcon, title: 'Earn Skill Tokens', description: 'For every session you teach, you earn Skill Tokens—the official currency of our knowledge economy.' },
-        { icon: SparklesIcon, title: 'Learn & Grow', description: 'Spend your tokens to learn any skill available on the platform from other talented members.' },
-    ];
-    return (
-        <motion.section
-            className="py-20 px-4"
-            variants={sectionVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+  const steps = [
+    {
+      icon: AcademicCapIcon,
+      title: "Teach & Share",
+      description:
+        "Share your expertise in live 1-on-1 sessions. Help others grow while reinforcing your own mastery.",
+    },
+    {
+      icon: TokenIcon,
+      title: "Earn Skill Tokens",
+      description:
+        "Every session you teach earns you Skill Tokens — your currency in this knowledge economy.",
+    },
+    {
+      icon: SparklesIcon,
+      title: "Learn & Grow",
+      description:
+        "Spend your tokens to learn anything on the platform. Guitar, Python, cooking — you name it.",
+    },
+  ];
+  return (
+    <motion.section
+      id="how-it-works"
+      className="py-24 px-4 -mt-32 pt-52 relative z-10 landing-section-alt"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+    >
+      <div className="container mx-auto text-center">
+        <motion.h2
+          variants={itemVariants}
+          className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white"
         >
-            <div className="container mx-auto text-center">
-                <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">How It Works</motion.h2>
-                <motion.p variants={itemVariants} className="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400">
-                    A simple, powerful loop for lifelong learning and growth.
-                </motion.p>
-                <div className="mt-16 grid md:grid-cols-3 gap-8 md:gap-4 relative">
-                    {/* Dashed lines for desktop */}
-                    <div className="hidden md:block absolute top-1/2 left-0 w-full h-px -translate-y-12">
-                        <svg width="100%" height="100%" className="overflow-visible">
-                            <line x1="20%" y1="0" x2="80%" y2="0" strokeWidth="2" className="stroke-slate-300 dark:stroke-slate-700" strokeDasharray="8 8" />
-                        </svg>
-                    </div>
+          How It Works
+        </motion.h2>
+        <motion.p
+          variants={itemVariants}
+          className="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400 italic"
+        >
+          Teach once. Learn forever.
+        </motion.p>
+        <div className="mt-16 grid md:grid-cols-3 gap-8 md:gap-4 relative">
+          {/* Dashed lines for desktop */}
+          <div className="hidden md:block absolute top-1/2 left-0 w-full h-px -translate-y-12">
+            <svg width="100%" height="100%" className="overflow-visible">
+              <line
+                x1="20%"
+                y1="0"
+                x2="80%"
+                y2="0"
+                strokeWidth="1"
+                className="stroke-slate-200 dark:stroke-slate-800"
+                strokeDasharray="4 4"
+              />
+            </svg>
+          </div>
 
-                    {steps.map((step, index) => (
-                        <motion.div key={index} variants={itemVariants} className="relative flex flex-col items-center">
-                            <div className="relative z-10 flex items-center justify-center w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full border-2 border-slate-200 dark:border-slate-700">
-                                <step.icon className="w-12 h-12 text-sky-500 dark:text-sky-400" />
-                            </div>
-                            <h3 className="mt-6 text-2xl font-bold text-slate-900 dark:text-white">{step.title}</h3>
-                            <p className="mt-2 text-slate-600 dark:text-slate-400">{step.description}</p>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
-        </motion.section>
-    )
-}
+          {steps.map((step, index) => (
+            <motion.div
+              key={index}
+              variants={itemVariants}
+              className="relative flex flex-col items-center"
+            >
+              <div className="relative z-10 flex items-center justify-center w-28 h-28 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-xl shadow-sky-500/5">
+                <step.icon className="w-14 h-14 text-sky-500 dark:text-sky-400" />
+              </div>
+              <h3 className="mt-8 text-2xl font-extrabold text-slate-900 dark:text-white">
+                {step.title}
+              </h3>
+              <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-xs">
+                {step.description}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Token Example Callout */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-14 mx-auto max-w-md p-5 rounded-2xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/30"
+        >
+          <p className="text-lg font-semibold text-sky-700 dark:text-sky-300">
+            💡 1 hour teaching = 1 token = 1 hour learning
+          </p>
+          <p className="mt-1 text-sm text-sky-600/80 dark:text-sky-400/80">
+            Your skills finally pay rent.
+          </p>
+        </motion.div>
+      </div>
+    </motion.section>
+  );
+};
 
 const FeaturesSection = () => {
-     const features = [
-        { icon: UsersIcon, title: 'Peer-to-Peer Sessions', description: 'Engage in live video sessions. Get personalized guidance and real-time feedback.', color: 'sky' },
-        { icon: SparklesIcon, title: 'AI Learning Coach', description: 'Get personalized learning plans and motivation from our intelligent AI coach.', color: 'purple' },
-        { icon: TokenIcon, title: 'Token Economy', description: 'A fair and transparent system where your skills and time are valued and tradable.', color: 'amber' },
-    ];
-    return (
-        <motion.section 
-            className="py-20 px-4 bg-slate-100/50 dark:bg-slate-800/50"
-            variants={sectionVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+  const features = [
+    {
+      icon: UsersIcon,
+      title: "Peer-to-Peer Sessions",
+      description:
+        "Engage in live video sessions. Get personalized guidance and real-time feedback from real people.",
+      benefit: "No more watching pre-recorded videos alone.",
+      color: "sky",
+    },
+    {
+      icon: SparklesIcon,
+      title: "AI Learning Coach",
+      description:
+        "Get personalized learning plans and stay on track with an intelligent AI coach that knows your goals.",
+      benefit: "Stop wasting time on the wrong tutorials.",
+      color: "purple",
+    },
+    {
+      icon: TokenIcon,
+      title: "Token Economy",
+      description:
+        "A fair, transparent system where your skills and time are valued. Teach to earn, spend to learn.",
+      benefit: "Never pay $500 for a course you could trade a skill for.",
+      color: "amber",
+    },
+  ];
+  return (
+    <motion.section
+      className="py-32 px-4 bg-slate-50 dark:bg-slate-950 relative z-20"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+    >
+      <div className="container mx-auto text-center">
+        <motion.h2
+          variants={itemVariants}
+          className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white"
         >
-            <div className="container mx-auto text-center">
-                 <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">Everything You Need to Succeed</motion.h2>
-                <div className="mt-16 grid md:grid-cols-3 gap-8">
-                    {features.map((feature, index) => (
-                        <motion.div key={index} variants={itemVariants} className="p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-left">
-                           <div className={`inline-block p-3 bg-${feature.color}-100 dark:bg-${feature.color}-500/20 rounded-lg`}>
-                                <feature.icon className={`w-8 h-8 text-${feature.color}-500 dark:text-${feature.color}-400`} />
-                           </div>
-                            <h3 className="mt-6 text-xl font-bold text-slate-900 dark:text-white">{feature.title}</h3>
-                            <p className="mt-2 text-slate-600 dark:text-slate-400">{feature.description}</p>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
-        </motion.section>
-    )
-}
-
-const ScrollingSkills: React.FC<{ skills: typeof skills, direction?: 'left' | 'right' }> = ({ skills, direction = 'left' }) => {
-    const duplicatedSkills = [...skills, ...skills, ...skills]; // Duplicate for seamless looping
-    return (
-        <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]">
-            <motion.div 
-                className="flex gap-4"
-                initial={{ x: direction === 'left' ? '0%' : '-100%' }}
-                animate={{ x: direction === 'left' ? '-100%' : '0%' }}
-                transition={{ duration: 60, ease: 'linear', repeat: Infinity }}
+          Everything You Need to Succeed
+        </motion.h2>
+        <div className="mt-16 grid md:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <motion.div
+              key={index}
+              variants={itemVariants}
+              className="p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-left group hover:border-sky-300 dark:hover:border-sky-500/50 transition-colors duration-300"
             >
-                {duplicatedSkills.map((skill, i) => (
-                    <SkillTag key={`${skill.id}-${i}`} skill={skill} className="text-lg whitespace-nowrap" />
-                ))}
+              <div
+                className={`inline-block p-3 bg-${feature.color}-100 dark:bg-${feature.color}-500/20 rounded-lg`}
+              >
+                <feature.icon
+                  className={`w-8 h-8 text-${feature.color}-500 dark:text-${feature.color}-400`}
+                />
+              </div>
+              <h3 className="mt-6 text-xl font-bold text-slate-900 dark:text-white">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                {feature.description}
+              </p>
+              <p className="mt-3 text-sm font-semibold text-sky-600 dark:text-sky-400 italic">
+                → {feature.benefit}
+              </p>
             </motion.div>
+          ))}
         </div>
-    )
+      </div>
+    </motion.section>
+  );
 };
 
 const CategoriesSection = () => {
-    return (
-        <motion.section 
-            className="py-20 px-4"
-            variants={sectionVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
+  const displayCategories = categories.filter((c) => c.id !== "c5"); // Exclude "User-Defined" for landing page
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const filteredSkills = activeCategory
+    ? skills.filter((s) => s.categoryId === activeCategory)
+    : skills;
+
+  return (
+    <motion.section
+      className="py-24 px-4 bg-white dark:bg-slate-900 relative overflow-hidden z-20"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+    >
+      <div className="container mx-auto text-center">
+        <motion.h2
+          variants={itemVariants}
+          className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white"
         >
-            <div className="container mx-auto text-center">
-                 <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">Explore a World of Skills</motion.h2>
-                <motion.p variants={itemVariants} className="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400">
-                    From cutting-edge technology to timeless creative arts, find your passion.
-                </motion.p>
-                <div className="mt-16 space-y-4">
-                   <ScrollingSkills skills={skills.slice(0, 6)} direction="left" />
-                   <ScrollingSkills skills={skills.slice(6)} direction="right" />
-                </div>
+          Explore a World of Skills
+        </motion.h2>
+        <motion.p
+          variants={itemVariants}
+          className="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400"
+        >
+          From cutting-edge technology to timeless creative arts — find your
+          passion, curated by category.
+        </motion.p>
+
+        {/* Category Tabs */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-10 flex flex-wrap justify-center gap-3"
+        >
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 border ${
+              activeCategory === null
+                ? "bg-sky-500 text-white border-sky-500 shadow-lg shadow-sky-500/25"
+                : "bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-500"
+            }`}
+          >
+            All Skills
+          </button>
+          {displayCategories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+                activeCategory === cat.id
+                  ? "bg-sky-500 text-white border-sky-500 shadow-lg shadow-sky-500/25"
+                  : "bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-500"
+              }`}
+            >
+              <cat.icon className="w-4 h-4" />
+              {cat.name}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Skills Marquee */}
+        <div className="mt-16 relative w-full overflow-hidden mask-gradient-x">
+          {/* Gradient Masks */}
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-50 dark:from-slate-900 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-slate-50 dark:from-slate-900 to-transparent z-10 pointer-events-none" />
+
+          <div className="flex w-max animate-scroll">
+            {/* First set of skills */}
+            <div className="flex gap-4 px-4">
+              {filteredSkills.map((skill) => (
+                <SkillTag
+                  key={`s1-${skill.id}`}
+                  skill={skill}
+                  className="text-base px-6 py-3 whitespace-nowrap"
+                />
+              ))}
             </div>
-        </motion.section>
-    );
+            {/* Duplicate set for seamless loop */}
+            <div className="flex gap-4 px-4">
+              {filteredSkills.map((skill) => (
+                <SkillTag
+                  key={`s2-${skill.id}`}
+                  skill={skill}
+                  className="text-base px-6 py-3 whitespace-nowrap"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
 };
 
 const TestimonialsSection = () => {
-    return (
-        <motion.section
-            className="py-20 px-4 bg-slate-100/50 dark:bg-slate-800/50"
-            variants={sectionVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
+  return (
+    <motion.section
+      className="py-32 px-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 relative z-20"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.2 }}
+    >
+      <div className="container mx-auto">
+        <motion.h2
+          variants={itemVariants}
+          className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white text-center"
         >
-            <div className="container mx-auto">
-                <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white text-center">Loved by Learners & Mentors</motion.h2>
-                <motion.div variants={itemVariants} className="mt-12">
-                     <DraggableTestimonials testimonials={landingPageTestimonials} />
-                </motion.div>
-            </div>
-        </motion.section>
-    );
-}
+          Real Results from Real Swappers
+        </motion.h2>
+        <motion.p
+          variants={itemVariants}
+          className="mt-4 max-w-xl mx-auto text-lg text-slate-600 dark:text-slate-400 text-center"
+        >
+          Don't just take our word for it — see what our community has achieved.
+        </motion.p>
+        <motion.div variants={itemVariants} className="mt-12">
+          <DraggableTestimonials testimonials={landingPageTestimonials} />
+        </motion.div>
+      </div>
+    </motion.section>
+  );
+};
+
+const UrgencyBanner: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  return (
+    <motion.section
+      className="py-12 px-4"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.5 }}
+    >
+      <motion.div
+        variants={itemVariants}
+        className="container mx-auto max-w-3xl text-center py-8 px-6 rounded-2xl urgency-glow-border bg-gradient-to-r from-sky-500/10 via-purple-500/10 to-sky-500/10 dark:from-sky-500/5 dark:via-purple-500/5 dark:to-sky-500/5 border border-sky-300/50 dark:border-sky-500/30"
+      >
+        <p className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+          🚀 Early access users earn{" "}
+          <span className="text-sky-500">5 bonus tokens</span>
+        </p>
+        <p className="mt-2 text-slate-600 dark:text-slate-400 text-lg">
+          Limited spots remaining — start for free today.
+        </p>
+        <div className="mt-6">
+          <GlassyButton text="Claim Your Bonus" onClick={onGetStarted} />
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+};
 
 const CTASection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
-    return (
-        <motion.section 
-            className="py-24 px-4 text-center"
-            variants={sectionVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.5 }}
-        >
-            <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">Ready to Join the Swap?</motion.h2>
-            <motion.p variants={itemVariants} className="mt-4 max-w-xl mx-auto text-lg text-slate-600 dark:text-slate-400">
-                Your next skill is just a session away. Start your journey in the new knowledge economy today.
-            </motion.p>
-            <motion.div variants={itemVariants} className="mt-10">
-                <GlassyButton text="Get Started for Free" onClick={onGetStarted} />
-            </motion.div>
-        </motion.section>
-    )
-}
+  return (
+    <motion.section
+      className="py-24 px-4 text-center landing-section-alt"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.5 }}
+    >
+      <motion.h2
+        variants={itemVariants}
+        className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white"
+      >
+        Your Skills Are Worth More Than You Think
+      </motion.h2>
+      <motion.p
+        variants={itemVariants}
+        className="mt-4 max-w-xl mx-auto text-lg text-slate-600 dark:text-slate-400"
+      >
+        Join a community where what you know pays for what you want to learn.
+      </motion.p>
+      <motion.div variants={itemVariants} className="mt-10">
+        <GlassyButton text="Get Your First Skill Free" onClick={onGetStarted} />
+      </motion.div>
+    </motion.section>
+  );
+};
 
 const Footer = () => (
-    <footer className="py-8 px-4 border-t border-slate-200 dark:border-slate-800">
-        <div className="container mx-auto text-center text-slate-500 dark:text-slate-400">
-            <Logo size={60} className="mx-auto mb-4" />
-            <p>&copy; {new Date().getFullYear()} SkillSwap. All rights reserved.</p>
+  <footer className="py-20 px-4 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+    <div className="container mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        {/* Brand Column */}
+        <div className="md:col-span-1">
+          <Logo size={60} className="mb-4" />
+          <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+            Built by learners, not corporations.
+          </p>
         </div>
-    </footer>
+
+        {/* Quick Links */}
+        <div>
+          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+            Platform
+          </h4>
+          <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
+            <li>
+              <a
+                href="#how-it-works"
+                className="hover:text-sky-500 transition-colors"
+              >
+                How It Works
+              </a>
+            </li>
+            <li>
+              <a
+                href="#features"
+                className="hover:text-sky-500 transition-colors"
+              >
+                Features
+              </a>
+            </li>
+            <li>
+              <a
+                href="#skills"
+                className="hover:text-sky-500 transition-colors"
+              >
+                Browse Skills
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {/* Community */}
+        <div>
+          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+            Community
+          </h4>
+          <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Roadmap
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Blog
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Community
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {/* Legal */}
+        <div>
+          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+            Legal
+          </h4>
+          <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Privacy Policy
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Terms of Service
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-sky-500 transition-colors">
+                Contact
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-10 pt-6 border-t border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p>&copy; {new Date().getFullYear()} SkillSwap. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
 );
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
-    return (
-       <div className="w-full h-full overflow-y-auto">
-           <HeroSection onGetStarted={onGetStarted} />
-           <HowItWorksSection />
-           <FeaturesSection />
-           <CategoriesSection />
-           <TestimonialsSection />
-           <CTASection onGetStarted={onGetStarted} />
-           <Footer />
-       </div>
-    );
+  return (
+    <div className="w-full h-full overflow-y-auto">
+      <HeroSection onGetStarted={onGetStarted} />
+      <HowItWorksSection />
+      <FeaturesSection />
+      <CategoriesSection />
+      <TestimonialsSection />
+      <UrgencyBanner onGetStarted={onGetStarted} />
+      <CTASection onGetStarted={onGetStarted} />
+      <Footer />
+    </div>
+  );
 };
 
 export default LandingPage;

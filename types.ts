@@ -80,3 +80,13 @@ export interface TokenTransaction {
     timestamp: Date;
     sessionId?: string;
 }
+
+export interface Notification {
+    id: string;
+    userId: string;
+    type: 'connection_request' | 'connection_accepted' | 'session_proposed' | 'session_scheduled' | 'session_cancelled' | 'new_match' | 'system';
+    message: string;
+    referenceId?: string;
+    isRead: boolean;
+    createdAt: string; // ISO string from backend
+}

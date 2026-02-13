@@ -77,3 +77,13 @@ class Rating(BaseModel):
     ratedId: str
     stars: int
     feedback: str
+
+class Notification(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    userId: str # The recipient
+    type: str # connection_request, connection_accepted, session_proposed, session_scheduled, session_cancelled, new_match, system
+    message: str
+    referenceId: Optional[str] = None # ID of the related object
+    isRead: bool = False
+    createdAt: datetime
+
