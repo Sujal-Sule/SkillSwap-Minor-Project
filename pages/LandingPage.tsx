@@ -35,7 +35,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       rater: {
         id: "u-lp1",
         name: "Krishna Sule",
-        avatarUrl: "https://picsum.photos/seed/alex/200",
+        avatarUrl: "/person 1.png",
       } as User,
     },
     {
@@ -50,7 +50,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       rater: {
         id: "u-lp2",
         name: "Virat Sharma",
-        avatarUrl: "https://picsum.photos/seed/maria/200",
+        avatarUrl: "/person 2.png",
       } as User,
     },
     {
@@ -65,7 +65,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       rater: {
         id: "u-lp3",
         name: "Rajnandani Kushwah",
-        avatarUrl: "https://www.gettyimages.in/detail/photo/one-businesswoman-studio-portrait-looking-at-the-royalty-free-image/1317804584",
+        avatarUrl: "female 2.png",
       } as User,
     },
     {
@@ -80,7 +80,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       rater: {
         id: "u-lp4",
         name: "Priya Patel",
-        avatarUrl: "https://picsum.photos/seed/priya/200",
+        avatarUrl: "female 1.png",
       } as User,
     },
   ];
@@ -105,7 +105,9 @@ const itemVariants: Variants = {
 };
 
 // Section Components
-const HeroSection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const HeroSection: React.FC<
+  LandingPageProps & { scrollToSection: (id: string) => void }
+> = ({ onGetStarted, scrollToSection }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -120,11 +122,6 @@ const HeroSection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         `${e.clientY - rect.top}px`,
       );
     }
-  };
-
-  const scrollToHowItWorks = () => {
-    const element = document.getElementById("how-it-works");
-    element?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -180,7 +177,7 @@ const HeroSection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           className="w-full sm:w-auto min-w-[200px]"
         />
         <button
-          onClick={scrollToHowItWorks}
+          onClick={() => scrollToSection("how-it-works")}
           className="px-8 py-4 rounded-full border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-all hover:border-sky-500 hover:text-sky-500 dark:hover:border-sky-400 dark:hover:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800/50"
         >
           See How It Works
@@ -322,6 +319,7 @@ const FeaturesSection = () => {
   ];
   return (
     <motion.section
+      id="features"
       className="py-32 px-4 bg-slate-50 dark:bg-slate-950 relative z-20"
       variants={sectionVariants}
       initial="hidden"
@@ -376,6 +374,7 @@ const CategoriesSection = () => {
 
   return (
     <motion.section
+      id="skills"
       className="py-24 px-4 bg-white dark:bg-slate-900 relative overflow-hidden z-20"
       variants={sectionVariants}
       initial="hidden"
@@ -548,15 +547,19 @@ const CTASection: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   );
 };
 
-const Footer = () => (
-  <footer className="py-20 px-4 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+const Footer = ({
+  scrollToSection,
+}: {
+  scrollToSection: (id: string) => void;
+}) => (
+  <footer className="py-7 px-4 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
     <div className="container mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Brand Column */}
         <div className="md:col-span-1">
           <Logo size={60} className="mb-4" />
           <p className="text-sm text-slate-500 dark:text-slate-400 italic">
-            Built by learners, not corporations.
+            Built by learners. For Learners.
           </p>
         </div>
 
@@ -567,28 +570,28 @@ const Footer = () => (
           </h4>
           <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
             <li>
-              <a
-                href="#how-it-works"
-                className="hover:text-sky-500 transition-colors"
+              <button
+                onClick={() => scrollToSection("how-it-works")}
+                className="hover:text-sky-500 transition-colors text-left"
               >
                 How It Works
-              </a>
+              </button>
             </li>
             <li>
-              <a
-                href="#features"
-                className="hover:text-sky-500 transition-colors"
+              <button
+                onClick={() => scrollToSection("features")}
+                className="hover:text-sky-500 transition-colors text-left"
               >
                 Features
-              </a>
+              </button>
             </li>
             <li>
-              <a
-                href="#skills"
-                className="hover:text-sky-500 transition-colors"
+              <button
+                onClick={() => scrollToSection("skills")}
+                className="hover:text-sky-500 transition-colors text-left"
               >
                 Browse Skills
-              </a>
+              </button>
             </li>
           </ul>
         </div>
@@ -650,16 +653,24 @@ const Footer = () => (
 );
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="w-full h-full overflow-y-auto">
-      <HeroSection onGetStarted={onGetStarted} />
+      <HeroSection
+        onGetStarted={onGetStarted}
+        scrollToSection={scrollToSection}
+      />
       <HowItWorksSection />
+      <UrgencyBanner onGetStarted={onGetStarted} />
       <FeaturesSection />
       <CategoriesSection />
       <TestimonialsSection />
-      <UrgencyBanner onGetStarted={onGetStarted} />
       <CTASection onGetStarted={onGetStarted} />
-      <Footer />
+      <Footer scrollToSection={scrollToSection} />
     </div>
   );
 };

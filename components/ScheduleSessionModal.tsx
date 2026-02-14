@@ -8,6 +8,7 @@ import {
   SparklesIcon,
   CheckCircleIcon,
 } from "./icons";
+import { CustomDatePicker, CustomTimePicker } from "./DateTimePicker";
 
 interface ScheduleSessionModalProps {
   isOpen: boolean;
@@ -168,7 +169,7 @@ const ScheduleSessionModal: React.FC<ScheduleSessionModalProps> = ({
                 Duration
               </label>
               <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                {[15,30,45,60].map((mins) => (
+                {[15, 30, 45, 60].map((mins) => (
                   <button
                     key={mins}
                     type="button"
@@ -224,29 +225,12 @@ const ScheduleSessionModal: React.FC<ScheduleSessionModalProps> = ({
               When works for you?
             </label>
             <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none dark:text-white"
-                />
-                <div className="absolute right-4 top-3.5 pointer-events-none text-slate-400">
-                  <CalendarIcon className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none dark:text-white"
-                />
-                <div className="absolute right-4 top-3.5 pointer-events-none text-slate-400">
-                  <ClockIcon className="w-5 h-5" />
-                </div>
-              </div>
+              <CustomDatePicker
+                value={date}
+                onChange={setDate}
+                minDate={new Date().toISOString().split("T")[0]}
+              />
+              <CustomTimePicker value={time} onChange={setTime} />
             </div>
             <p className="text-xs text-slate-500 mt-2 ml-1">
               Choose a time that works for both of you.{" "}
