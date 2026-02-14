@@ -56,17 +56,17 @@ const ActiveFocusPanel: React.FC<ActiveFocusPanelProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-md hover:shadow-lg transition-shadow duration-200"
+        className="bg-surface border border-border rounded-2xl p-8 shadow-md hover:shadow-lg transition-shadow duration-200"
       >
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+            <h3 className="text-lg font-semibold text-text-primary mb-1">
               Your Next Session
             </h3>
             <div className="flex items-center gap-2">
-              <ClockIcon className="w-4 h-4 text-slate-500" />
+              <ClockIcon className="w-4 h-4 text-text-muted" />
               <p
-                className={`text-sm font-medium ${urgent ? "text-orange-600 dark:text-orange-400" : "text-slate-600 dark:text-slate-400"}`}
+                className={`text-sm font-medium ${urgent ? "text-orange-600 dark:text-orange-400" : "text-text-secondary"}`}
               >
                 {countdown}
               </p>
@@ -83,13 +83,13 @@ const ActiveFocusPanel: React.FC<ActiveFocusPanelProps> = ({
           <img
             src={mentor.avatarUrl}
             alt={mentor.name}
-            className="w-20 h-20 rounded-2xl border-2 border-slate-300 dark:border-slate-600"
+            className="w-20 h-20 rounded-2xl border-2 border-border"
           />
           <div className="flex-1">
-            <p className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+            <p className="text-xl font-bold text-text-primary mb-1">
               {mentor.name}
             </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+            <p className="text-sm text-text-secondary mb-3">
               {nextSession.studentId === mentor.id
                 ? "Learning from you"
                 : "Teaching you"}
@@ -113,7 +113,7 @@ const ActiveFocusPanel: React.FC<ActiveFocusPanelProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/30 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center shadow-md"
+      className="bg-surface border border-border rounded-2xl p-12 text-center shadow-md bg-gradient-to-br from-surface to-background"
     >
       <div className="mb-6 flex justify-center">
         <div className="w-20 h-20 rounded-2xl bg-sky-500/10 flex items-center justify-center">

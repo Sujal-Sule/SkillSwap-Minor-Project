@@ -77,18 +77,18 @@ const CoachPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-210px)] md:h-[calc(100vh-144px)] max-w-5xl mx-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-lg shadow-2xl border border-slate-700">
+    <div className="flex flex-col h-[calc(100vh-210px)] md:h-[calc(100vh-144px)] max-w-5xl mx-auto bg-surface rounded-lg shadow-2xl border border-border">
       {/* Premium Header */}
-      <div className="flex items-center justify-between p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-6 border-b border-border bg-surface/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-purple-500 flex items-center justify-center shadow-lg shadow-sky-500/30">
             <SparklesIcon className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-text-primary">
               SkillSwap AI Coach
             </h2>
-            <p className="text-sm text-slate-400 mt-0.5">
+            <p className="text-sm text-text-muted mt-0.5">
               Your personalized learning strategist
             </p>
           </div>
@@ -96,12 +96,12 @@ const CoachPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="text-xs text-emerald-400 font-semibold">
+            <span className="text-xs text-emerald-500 font-semibold">
               Active
             </span>
           </div>
           <div className="px-3 py-1.5 bg-gradient-to-r from-sky-500/10 to-purple-500/10 border border-sky-500/30 rounded-full">
-            <span className="text-xs bg-gradient-to-r from-sky-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+            <span className="text-xs bg-gradient-to-r from-sky-500 to-purple-500 bg-clip-text text-transparent font-semibold">
               Powered by AI
             </span>
           </div>
@@ -127,7 +127,7 @@ const CoachPage: React.FC = () => {
               className={`max-w-xl px-5 py-4 rounded-3xl shadow-sm ${
                 msg.sender === "user"
                   ? "bg-sky-500 text-white rounded-br-md"
-                  : "bg-gradient-to-br from-sky-500/10 via-slate-700 to-purple-500/10 border border-sky-500/20 text-slate-100 rounded-bl-md shadow-lg shadow-sky-500/5"
+                  : "bg-surface-highlight border border-border text-text-primary rounded-bl-md shadow-lg"
               }`}
             >
               {msg.sender === "coach" ? (
@@ -140,7 +140,7 @@ const CoachPage: React.FC = () => {
               <img
                 src={currentUser.avatarUrl}
                 alt={currentUser.name}
-                className="w-10 h-10 rounded-full border-2 border-slate-700"
+                className="w-10 h-10 rounded-full border-2 border-border"
               />
             )}
           </motion.div>
@@ -160,7 +160,7 @@ const CoachPage: React.FC = () => {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-sky-500/20">
               <SparklesIcon className="w-6 h-6 text-white" />
             </div>
-            <div className="max-w-xl px-5 py-4 rounded-3xl bg-gradient-to-br from-sky-500/10 via-slate-700 to-purple-500/10 border border-sky-500/20 shadow-lg">
+            <div className="max-w-xl px-5 py-4 rounded-3xl bg-surface-highlight border border-border shadow-lg">
               <div className="flex items-center space-x-2">
                 <div className="w-2.5 h-2.5 bg-sky-400 rounded-full animate-pulse"></div>
                 <div
@@ -179,14 +179,14 @@ const CoachPage: React.FC = () => {
       </div>
 
       {/* Premium Input */}
-      <div className="p-6 border-t border-slate-700 bg-slate-800/50 backdrop-blur-sm">
+      <div className="p-6 border-t border-border bg-surface/50 backdrop-blur-sm">
         <form onSubmit={handleSendMessage} className="flex items-center gap-4">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Ask for a learning roadmap, skill strategy, or motivation tips..."
-            className="flex-1 px-6 py-3.5 bg-slate-700/70 text-white placeholder-slate-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:shadow-lg focus:shadow-sky-500/20 transition-all duration-200"
+            className="flex-1 px-6 py-3.5 bg-background text-text-primary placeholder-text-muted rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:shadow-lg focus:shadow-sky-500/20 transition-all duration-200 border border-border"
             disabled={isLoading}
           />
           <motion.button

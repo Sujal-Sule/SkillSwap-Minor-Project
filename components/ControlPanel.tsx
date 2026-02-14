@@ -15,7 +15,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   upcomingSessions,
 }) => {
   return (
-    <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-sm">
+    <div className="bg-surface border border-border rounded-2xl p-8 shadow-sm">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1.5fr_auto_1.5fr] gap-8 items-center">
         {/* Left Section: Token Balance */}
         <div className="flex items-center gap-4">
@@ -23,67 +23,61 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             <TokenIcon className="w-7 h-7 text-amber-500" />
           </div>
           <div>
-            <p className="text-4xl font-bold text-slate-900 dark:text-white leading-none mb-1">
+            <p className="text-4xl font-bold text-text-primary leading-none mb-1">
               {tokens}
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Available Tokens
-            </p>
+            <p className="text-sm text-text-muted">Available Tokens</p>
           </div>
         </div>
 
         {/* Vertical Divider */}
-        <div className="hidden md:block w-px h-16 bg-slate-200 dark:bg-slate-700"></div>
+        <div className="hidden md:block w-px h-16 bg-border"></div>
 
         {/* Middle Section: Connections & Sessions */}
         <div className="grid grid-cols-2 gap-6">
           <div className="flex flex-col items-center text-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mb-2">
-              <UsersIcon className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+            <div className="w-12 h-12 rounded-xl bg-surface-highlight/50 flex items-center justify-center mb-2">
+              <UsersIcon className="w-6 h-6 text-text-secondary" />
             </div>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white leading-none mb-1">
+            <p className="text-3xl font-bold text-text-primary leading-none mb-1">
               {connections}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Connections
-            </p>
+            <p className="text-xs text-text-muted">Connections</p>
           </div>
           <div className="flex flex-col items-center text-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mb-2">
-              <AcademicCapIcon className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+            <div className="w-12 h-12 rounded-xl bg-surface-highlight/50 flex items-center justify-center mb-2">
+              <AcademicCapIcon className="w-6 h-6 text-text-secondary" />
             </div>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white leading-none mb-1">
+            <p className="text-3xl font-bold text-text-primary leading-none mb-1">
               {upcomingSessions}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Sessions
-            </p>
+            <p className="text-xs text-text-muted">Sessions</p>
           </div>
         </div>
 
         {/* Vertical Divider */}
-        <div className="hidden md:block w-px h-16 bg-slate-200 dark:bg-slate-700"></div>
+        <div className="hidden md:block w-px h-16 bg-border"></div>
 
         {/* Right Section: Profile Optimization */}
         <div className="flex flex-col justify-center">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <p className="text-sm font-semibold text-text-secondary">
               {profileCompletion === 100
                 ? "Profile Optimized"
                 : "Profile Strength"}
             </p>
-            <p className="text-xl font-bold text-slate-900 dark:text-white">
+            <p className="text-xl font-bold text-text-primary">
               {profileCompletion}%
             </p>
           </div>
-          <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-background rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
               style={{ width: `${profileCompletion}%` }}
             />
           </div>
           {profileCompletion < 100 && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-right">
+            <p className="text-xs text-text-muted mt-2 text-right">
               {100 - profileCompletion}% to complete
             </p>
           )}

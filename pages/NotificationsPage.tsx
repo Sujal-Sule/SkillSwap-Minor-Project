@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { User, ConnectionRequest, Notification } from "../types";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
@@ -41,8 +42,8 @@ const TabButton = ({
     onClick={() => setActiveTab(id)}
     className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all relative ${
       activeTab === id
-        ? "bg-slate-800 text-white shadow-lg shadow-slate-900/10"
-        : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
+        ? "bg-surface text-text-primary shadow-lg shadow-sky-500/10"
+        : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
     }`}
     whileHover={{ scale: 1.05 }}
     whileTap={{ scale: 0.95 }}
@@ -53,8 +54,8 @@ const TabButton = ({
       <span
         className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${
           activeTab === id
-            ? "bg-white text-slate-900"
-            : "bg-slate-700 text-slate-300"
+            ? "bg-text-primary text-background"
+            : "bg-surface-highlight text-text-muted"
         }`}
       >
         {count}
@@ -63,7 +64,7 @@ const TabButton = ({
     {activeTab === id && (
       <motion.div
         layoutId="activeNotificationTab"
-        className="absolute inset-0 rounded-full border border-slate-700/50 -z-10 bg-slate-800"
+        className="absolute inset-0 rounded-full border border-border -z-10 bg-surface"
         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
       />
     )}
@@ -78,6 +79,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
   currentUserId,
   viewUserProfile,
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("incoming");
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -129,24 +131,24 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
   /* TabButton component moved outside */
 
   return (
-    <div className="pt-36 pb-20 px-6 max-w-4xl mx-auto min-h-screen">
+    <div className="pt-0 pb-20 px-6 max-w-4xl mx-auto min-h-screen">
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-10 text-center md:text-left"
       >
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
+        <h1 className="text-3xl md:text-4xl font-bold text-text-primary mb-2 tracking-tight">
           Notifications
         </h1>
-        <p className="text-slate-400 text-lg">
+        <p className="text-text-muted text-lg">
           Stay updated on your connections and requests.
         </p>
       </motion.div>
 
       {/* Tabs */}
       <LayoutGroup>
-        <div className="flex flex-wrap gap-2 mb-10 bg-slate-900/50 p-1.5 rounded-full border border-slate-800/50 w-full md:w-fit mx-auto md:mx-0 backdrop-blur-sm">
+        <div className="flex flex-wrap gap-2 mb-10 bg-surface/50 p-1.5 rounded-full border border-border w-full md:w-fit mx-auto md:mx-0 backdrop-blur-sm">
           <TabButton
             id="incoming"
             activeTab={activeTab}
@@ -191,7 +193,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   return (
                     <div
                       key={req.id}
-                      className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-5 border border-white/5 shadow-[0_4px_12px_rgba(0,0,0,0.25)] hover:border-white/10 transition-all flex flex-col md:flex-row items-center gap-6"
+                      className="bg-surface backdrop-blur-md rounded-2xl p-5 border border-border shadow-sm hover:border-sky-500/30 transition-all flex flex-col md:flex-row items-center gap-6"
                     >
                       <div
                         className="flex items-center gap-4 flex-1 w-full"
@@ -201,21 +203,21 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                           <img
                             src={sender.avatarUrl}
                             alt={sender.name}
-                            className="w-14 h-14 rounded-full object-cover ring-2 ring-slate-700"
+                            className="w-14 h-14 rounded-full object-cover ring-2 ring-border"
                           />
-                          <span className="absolute -bottom-1 -right-1 bg-sky-500 text-[10px] px-1.5 py-0.5 rounded-full text-white font-bold border-2 border-slate-800">
+                          <span className="absolute -bottom-1 -right-1 bg-sky-500 text-[10px] px-1.5 py-0.5 rounded-full text-white font-bold border-2 border-surface">
                             New
                           </span>
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-white hover:text-sky-400 cursor-pointer transition-colors">
+                          <h3 className="font-bold text-lg text-text-primary hover:text-sky-500 cursor-pointer transition-colors">
                             {sender.name}
                           </h3>
-                          <p className="text-slate-400 text-sm">
+                          <p className="text-text-muted text-sm">
                             Wants to connect with you.
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700">
+                            <span className="text-xs text-text-muted bg-surface-highlight px-2 py-0.5 rounded-full border border-border">
                               Application Developer
                             </span>
                           </div>
@@ -231,7 +233,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                         </button>
                         <button
                           onClick={() => handleRequest(req.id, "declined")}
-                          className="flex-1 md:flex-none px-6 py-2.5 text-sm font-bold bg-slate-700/50 text-slate-300 rounded-xl hover:bg-slate-700 hover:text-white transition-colors border border-slate-600/50"
+                          className="flex-1 md:flex-none px-6 py-2.5 text-sm font-bold bg-surface-highlight text-text-muted rounded-xl hover:bg-surface-hover hover:text-text-primary transition-colors border border-border"
                         >
                           Decline
                         </button>
@@ -240,17 +242,20 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   );
                 })
               ) : (
-                <div className="text-center py-20 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700/50 flex flex-col items-center">
-                  <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
-                    <InboxIcon className="w-8 h-8 text-slate-600" />
+                <div className="text-center py-20 bg-surface/50 rounded-3xl border border-dashed border-border flex flex-col items-center">
+                  <div className="w-16 h-16 bg-surface-highlight rounded-full flex items-center justify-center mb-4">
+                    <InboxIcon className="w-8 h-8 text-text-muted" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-300 mb-2">
+                  <h3 className="text-xl font-bold text-text-primary mb-2">
                     No new requests yet
                   </h3>
-                  <p className="text-slate-500 max-w-sm mx-auto mb-6">
+                  <p className="text-text-muted max-w-sm mx-auto mb-6">
                     When someone wants to learn from you, you'll see it here.
                   </p>
-                  <button className="text-sky-400 font-bold text-sm hover:text-sky-300 transition-colors">
+                  <button
+                    onClick={() => navigate("/profile")}
+                    className="text-sky-500 font-bold text-sm hover:text-sky-400 transition-colors"
+                  >
                     Update your profile to attract matches →
                   </button>
                 </div>
@@ -267,7 +272,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   return (
                     <div
                       key={req.id}
-                      className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-5 border border-white/5 shadow-[0_4px_12px_rgba(0,0,0,0.25)] hover:border-white/10 transition-all flex flex-col md:flex-row items-center gap-4 md:justify-between"
+                      className="bg-surface backdrop-blur-md rounded-2xl p-5 border border-border shadow-sm hover:border-sky-500/30 transition-all flex flex-col md:flex-row items-center gap-4 md:justify-between"
                     >
                       <div
                         className="flex items-center gap-4 w-full md:w-auto"
@@ -279,12 +284,12 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                           className="w-12 h-12 rounded-full object-cover opacity-80 cursor-pointer"
                         />
                         <div>
-                          <h3 className="font-bold text-slate-200 hover:text-white cursor-pointer transition-colors">
+                          <h3 className="font-bold text-text-primary hover:text-sky-500 cursor-pointer transition-colors">
                             {receiver.name}
                           </h3>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <ClockIcon className="w-3.5 h-3.5 text-slate-500" />
-                            <span className="text-xs text-slate-500 font-medium">
+                            <ClockIcon className="w-3.5 h-3.5 text-text-muted" />
+                            <span className="text-xs text-text-muted font-medium">
                               Invitation sent 2 hours ago
                             </span>
                           </div>
@@ -297,7 +302,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                         </span>
                         <button
                           onClick={() => cancelRequest(req.id)}
-                          className="text-sm font-medium text-slate-500 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-700/50"
+                          className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-surface-hover"
                         >
                           Withdraw
                         </button>
@@ -306,14 +311,14 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   );
                 })
               ) : (
-                <div className="text-center py-20 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700/50 flex flex-col items-center">
-                  <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
-                    <PaperAirplaneIcon className="w-8 h-8 text-slate-600" />
+                <div className="text-center py-20 bg-surface/50 rounded-3xl border border-dashed border-border flex flex-col items-center">
+                  <div className="w-16 h-16 bg-surface-highlight rounded-full flex items-center justify-center mb-4">
+                    <PaperAirplaneIcon className="w-8 h-8 text-text-muted" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-300 mb-2">
+                  <h3 className="text-xl font-bold text-text-primary mb-2">
                     No pending invitations
                   </h3>
-                  <p className="text-slate-500 max-w-sm mx-auto">
+                  <p className="text-text-muted max-w-sm mx-auto">
                     You haven't sent any connection requests recently.
                   </p>
                 </div>
@@ -323,20 +328,20 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
 
           {activeTab === "activity" && (
             <div className="relative">
-              <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-800/50"></div>
+              <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-border/50"></div>
               <div className="space-y-8">
                 {notifications.length > 0 ? (
                   notifications.map((notification) => (
                     <div key={notification.id} className="relative pl-16 group">
-                      <div className="absolute left-3 top-1 w-6 h-6 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-full flex items-center justify-center z-10 group-hover:border-slate-500 transition-colors">
+                      <div className="absolute left-3 top-1 w-6 h-6 -translate-x-1/2 bg-surface border border-border rounded-full flex items-center justify-center z-10 group-hover:border-sky-500 transition-colors">
                         {getNotificationIcon(notification.type)}
                       </div>
-                      <div className="bg-slate-800/20 rounded-2xl p-4 border border-white/5 hover:bg-slate-800/40 transition-all">
-                        <p className="text-slate-200 font-medium">
+                      <div className="bg-surface rounded-2xl p-4 border border-border hover:bg-surface-hover transition-all shadow-sm">
+                        <p className="text-text-primary font-medium">
                           {notification.message}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-text-muted">
                             {new Date(notification.createdAt).toLocaleString()}
                           </span>
                           {!notification.isRead && (
@@ -348,7 +353,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                   ))
                 ) : (
                   <div className="text-center py-10">
-                    <p className="text-slate-500">No recent activity.</p>
+                    <p className="text-text-muted">No recent activity.</p>
                   </div>
                 )}
               </div>

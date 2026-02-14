@@ -33,12 +33,11 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
 
   return (
-    <header className="fixed top-6 left-0 right-0 px-4 z-40 flex justify-center">
+    <header className="fixed top-0 left-0 right-0 z-40">
       <div
-        className="glassy-nav-container rounded-2xl mx-auto w-full max-w-7xl border border-white/5 shadow-2xl shadow-black/30 backdrop-blur-xl"
+        className="glassy-nav-container w-full shadow-sm backdrop-blur-xl border-b border-white/10 dark:border-slate-700/50"
         style={{
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)",
+          backgroundColor: "var(--sw-surface)", // Use surface token but with opacity handled by class
         }}
       >
         <div className="flex items-center justify-between h-20 px-8">
@@ -59,8 +58,8 @@ const Header: React.FC<HeaderProps> = ({
                     className={({ isActive }) =>
                       `relative px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-200 active:scale-95 ${
                         isActive
-                          ? "text-white"
-                          : "text-slate-400 hover:text-white hover:bg-white/5"
+                          ? "text-nav-text-active"
+                          : "text-text-muted hover:text-text-primary hover:bg-surface-highlight/10"
                       }`
                     }
                   >
@@ -78,7 +77,7 @@ const Header: React.FC<HeaderProps> = ({
                         {isActive && (
                           <motion.div
                             layoutId="active-nav-pill"
-                            className="absolute inset-0 bg-white/15 rounded-full shadow-lg shadow-sky-500/20"
+                            className="absolute inset-0 bg-nav-active rounded-full shadow-sm shadow-sky-500/10"
                             transition={{
                               type: "spring",
                               bounce: 0.2,
@@ -98,33 +97,39 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-6">
             {/* Token Balance - Gamified */}
             {!isAdmin && (
-              <div className="hidden sm:flex items-center gap-2.5 bg-slate-800/50 rounded-full px-5 py-2 border border-amber-500/30 shadow-lg shadow-amber-500/20">
+              <div className="hidden sm:flex items-center gap-2.5 bg-surface/50 rounded-full px-5 py-2 border border-amber-500/30 shadow-lg shadow-amber-500/20">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[11px] font-bold text-white shadow-inner shadow-amber-900/50">
                   S
                 </div>
-                <span className="text-sm font-bold text-slate-200">
+                <span className="text-sm font-bold text-text-primary">
                   {currentUser.tokens}{" "}
-                  <span className="text-slate-400 font-normal ml-0.5">
+                  <span className="text-text-muted font-normal ml-0.5">
                     Tokens
                   </span>
                 </span>
               </div>
             )}
 
-            <div className="h-8 w-px bg-white/10 hidden sm:block"></div>
+            <div className="h-8 w-px bg-border hidden sm:block"></div>
+
+            {/* Theme Toggle */}
+            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
             {/* Profile & Logout */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 cursor-pointer group">
+              <div
+                className="flex items-center gap-3 cursor-pointer group"
+                onClick={() => navigate("/profile")}
+              >
                 <div className="text-right hidden md:block">
-                  <div className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">
+                  <div className="text-sm font-bold text-text-primary group-hover:text-sky-500 transition-colors">
                     {currentUser.name}
                   </div>
-                  <div className="text-xs text-slate-500">Free Plan</div>
+                  <div className="text-xs text-text-muted">Free Plan</div>
                 </div>
                 <div className="relative">
                   <img
-                    className="h-10 w-10 rounded-full object-cover border-2 border-slate-700 group-hover:border-sky-500 transition-colors shadow-md"
+                    className="h-10 w-10 rounded-full object-cover border-2 border-border group-hover:border-sky-500 transition-colors shadow-md"
                     src={
                       currentUser.avatarUrl ||
                       "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
@@ -132,13 +137,13 @@ const Header: React.FC<HeaderProps> = ({
                     }
                     alt={currentUser.name}
                   />
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></div>
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-surface rounded-full"></div>
                 </div>
               </div>
 
               <button
                 onClick={logout}
-                className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                 title="Logout"
               >
                 <svg

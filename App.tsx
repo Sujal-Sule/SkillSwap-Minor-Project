@@ -82,7 +82,7 @@ const Layout = ({
     navItems.find((item: any) => item.path === location.pathname)?.id || "";
 
   return (
-    <div className="w-full min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
+    <div className="w-full min-h-screen bg-background text-text-primary font-sans transition-colors duration-300">
       <Header
         currentUser={currentUser}
         isAdmin={isAdmin}
@@ -102,7 +102,13 @@ const Layout = ({
         />
       )}
 
-      <main className={`pt-28 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8`}>
+      <main
+        className={`${
+          location.pathname === "/chat"
+            ? "pt-20 px-0 h-[calc(100vh-80px)]"
+            : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
+        }`}
+      >
         {children}
       </main>
     </div>
@@ -766,13 +772,6 @@ const App: React.FC = () => {
       path: "/coach",
       label: "AI Coach",
       icon: SparklesIcon,
-      count: 0,
-    },
-    {
-      id: "profile",
-      path: "/profile",
-      label: "Profile",
-      icon: UserCircleIcon,
       count: 0,
     },
   ];

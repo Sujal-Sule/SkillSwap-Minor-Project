@@ -8,12 +8,14 @@ import SkillTag from "../components/SkillTag";
 import ControlPanel from "../components/ControlPanel";
 import ActiveFocusPanel from "../components/ActiveFocusPanel";
 import ActivityFeed from "../components/ActivityFeed";
+import MentorshipIllustration from "../components/MentorshipIllustration";
 import {
   TokenIcon,
   UsersIcon,
   AcademicCapIcon,
   SparklesIcon,
   ClockIcon,
+  ChatBubbleLeftRightIcon,
 } from "../components/icons";
 
 interface DashboardPageProps {
@@ -122,10 +124,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* Enhanced Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+          <h1 className="text-3xl font-bold text-text-primary mb-2">
             Welcome back, {currentUser.name.split(" ")[0]}!
           </h1>
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <ClockIcon className="w-4 h-4" />
             <p>
               {upcomingSessions.length > 0
@@ -142,29 +144,139 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         </button>
       </div>
 
-      {/* Control Panel - Unified Stats Strip */}
-      <ControlPanel
-        tokens={currentUser.tokens}
-        profileCompletion={profileCompletion}
-        connections={currentUser.connections?.length || 0}
-        upcomingSessions={upcomingSessions.length}
-      />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Tokens Card */}
+        <motion.div
+          whileHover={{ y: -5 }}
+          className="bg-surface p-6 rounded-3xl border border-border shadow-sm flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <TokenIcon className="w-8 h-8 text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-text-primary">
+                {currentUser.tokens}
+              </h2>
+              <p className="text-text-secondary font-medium">Tokens</p>
+              <p className="text-xs text-text-muted mt-1">Available Balance</p>
+            </div>
+          </div>
+        </motion.div>
 
-      {/* Active Focus Panel - Dynamic Heartbeat */}
-      <ActiveFocusPanel
-        nextSession={upcomingSessions[0]}
-        mentor={
-          upcomingSessions[0]
-            ? getUser(
-                upcomingSessions[0].studentId === currentUser.id
-                  ? upcomingSessions[0].teacherId
-                  : upcomingSessions[0].studentId,
-              )
-            : undefined
-        }
-        onJoinSession={startLiveSession}
-        onFindMentor={() => onCategorySelect("")}
-      />
+        {/* Connections Card */}
+        <motion.div
+          whileHover={{ y: -5 }}
+          className="bg-surface p-6 rounded-3xl border border-border shadow-sm flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+              <UsersIcon className="w-8 h-8 text-sky-500" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-text-primary">
+                {currentUser.connections?.length || 0}
+              </h2>
+              <p className="text-text-secondary font-medium">Connections</p>
+              <p className="text-xs text-text-muted mt-1">Active Members</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Sessions Card */}
+        <motion.div
+          whileHover={{ y: -5 }}
+          className="bg-surface p-6 rounded-3xl border border-border shadow-sm flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <AcademicCapIcon className="w-8 h-8 text-purple-500" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-text-primary">
+                {sessions.filter((s) => s.status === "completed").length}
+              </h2>
+              <p className="text-text-secondary font-medium">Sessions</p>
+              <p className="text-xs text-text-muted mt-1">
+                Completed this month
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Profile Optimization Section */}
+      <div className="bg-surface p-8 rounded-3xl border border-border shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-text-primary">
+            Profile Optimized
+          </h2>
+        </div>
+        <div className="relative w-full h-10 bg-purple-100 dark:bg-purple-900/20 rounded-full overflow-hidden mb-3">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${profileCompletion}%` }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="absolute top-0 left-0 h-full bg-purple-600 flex items-center justify-end pr-4 rounded-full"
+          >
+            {profileCompletion === 100 && (
+              <div className="w-6 h-6 rounded-full bg-white text-purple-600 flex items-center justify-center">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            )}
+          </motion.div>
+          <div className="absolute inset-0 flex items-center pl-6 text-white font-bold z-10">
+            {profileCompletion}%
+          </div>
+        </div>
+        <p className="text-text-muted text-sm">
+          {profileCompletion === 100
+            ? "Excellent! Your profile is fully optimized for maximum visibility."
+            : "Complete your profile to increase your visibility and get more matches."}
+        </p>
+      </div>
+
+      {/* Ready for Next Session Banner */}
+      <div className="bg-surface p-10 rounded-3xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
+        <div className="relative z-10 max-w-xl">
+          <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-3">
+            Ready for your next session?
+          </h2>
+          <p className="text-text-muted mb-8 text-lg">
+            Connect with an expert mentor to accelerate your learning and
+            growth.
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => onCategorySelect("")}
+              className="px-8 py-3 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 transition-colors shadow-lg shadow-sky-500/30"
+            >
+              Find a Mentor
+            </button>
+          </div>
+        </div>
+
+        {/* Illustration Area */}
+        <div className="relative z-10 w-full md:w-auto flex justify-center md:mr-10">
+          <MentorshipIllustration className="w-64 h-auto drop-shadow-xl" />
+        </div>
+
+        {/* Decorative Background Elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-500/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+      </div>
 
       {/* Activity Feed */}
       <ActivityFeed
@@ -177,14 +289,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* Grow your network */}
       <div>
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Your Network
-          </h2>
+          <h2 className="text-2xl font-bold text-text-primary">Your Network</h2>
           <div className="flex gap-6 text-sm">
-            <span className="text-slate-600 dark:text-slate-400">
+            <span className="text-text-secondary">
               {currentUser.connections?.length || 0} connections
             </span>
-            <span className="text-slate-600 dark:text-slate-400">
+            <span className="text-text-secondary">
               {
                 connectionRequests.filter(
                   (r) =>
@@ -206,16 +316,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 px-6 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/30 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+          <div className="text-center py-16 px-6 bg-surface/50 border border-dashed border-border rounded-2xl">
             <div className="mb-4 flex justify-center">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center">
                 <UsersIcon className="w-8 h-8 text-purple-500" />
               </div>
             </div>
-            <p className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <p className="text-lg font-semibold text-text-primary mb-2">
               Building your network
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-text-muted">
               We're finding the perfect people for you to connect with!
             </p>
           </div>
@@ -224,7 +334,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* Explore Skills - Compact Horizontal Strip */}
       <div>
-        <h2 className="text-2xl font-bold mb-8 text-slate-900 dark:text-slate-100">
+        <h2 className="text-2xl font-bold mb-8 text-text-primary">
           Explore Skills
         </h2>
         <div className="flex space-x-6 overflow-x-auto pb-4 -mx-8 px-8">

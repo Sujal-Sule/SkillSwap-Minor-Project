@@ -21,19 +21,17 @@ const UserSuggestionCard: React.FC<UserSuggestionCardProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl text-center flex flex-col items-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+    <div className="bg-surface border border-border p-6 rounded-2xl text-center flex flex-col items-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
       <div className="relative mb-4">
         <img
           src={user.avatarUrl}
           alt={user.name}
-          className="w-24 h-24 rounded-full border-2 border-slate-300 dark:border-slate-600"
+          className="w-24 h-24 rounded-full border-2 border-border"
         />
         {/* Online status indicator */}
-        <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+        <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-surface rounded-full"></div>
       </div>
-      <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2 flex-1">
-        {user.name}
-      </p>
+      <p className="font-semibold text-text-primary mb-2 flex-1">{user.name}</p>
 
       {/* Show shared skills if any */}
       {user.teaches && user.teaches.length > 0 && (

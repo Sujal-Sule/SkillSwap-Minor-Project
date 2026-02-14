@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
@@ -23,13 +23,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        darkMode: "class", // Enable class-based dark mode
+        darkMode: "class",
         theme: {
           extend: {
             fontFamily: {
               sans: ["Inter", "sans-serif"],
             },
             colors: {
+              // Semantic Tokens - The Soft Navy Glass System
+              background: "var(--sw-bg)",
+              surface: "var(--sw-card)",
+              "surface-hover": "var(--sw-card-hover)",
+              "surface-highlight": "var(--sw-card-highlight)",
+
+              "text-primary": "var(--sw-text-primary)",
+              "text-secondary": "var(--sw-text-secondary)",
+              "text-muted": "var(--sw-text-muted)",
+
+              border: "var(--sw-border)",
+
+              "nav-active": "var(--sw-nav-active)",
+              "nav-text-active": "var(--sw-nav-active-text)",
+
+              // Preserved Palettes
               sky: {
                 50: "#f0f9ff",
                 100: "#e0f2fe",
@@ -110,40 +126,81 @@
     </script>
     <style>
       :root {
-        --body-bg: #f1f5f9;
-        /* slate-100 */
-        --grid-dot-color: rgba(0, 0, 0, 0.04);
-        --nav-bg: rgba(248, 250, 252, 0.7);
-        /* slate-50 */
-        --nav-gradient-start: rgba(0, 0, 0, 0.05);
-        --nav-border: rgba(0, 0, 0, 0.08);
-        --nav-inner-border-start: rgba(0, 0, 0, 0.1);
-        --card-bg-light: #ffffff;
-        --card-bg-dark: #1e293b;
-        --sidebar-bg-dark: #0f172a;
+        /* Soft Navy Glass - Light Mode */
+        /* Slightly cool, dense mist - not plain white/slate-50 */
+        --sw-bg: #eff4f8;
+
+        /* Glassy Surface - Higher capacity for contrast against the denser bg */
+        --sw-card: rgba(255, 255, 255, 0.85);
+        --sw-card-hover: #ffffff;
+        --sw-card-highlight: #ffffff;
+
+        /* Typography - Deep Navy base */
+        --sw-text-primary: #0f172a; /* Slate 900 */
+        --sw-text-secondary: #334155; /* Slate 700 */
+        --sw-text-muted: #64748b; /* Slate 500 */
+
+        /* Borders - Stronger definition for light mode to prevent "wash out" */
+        --sw-border: rgba(148, 163, 184, 0.25);
+
+        /* Navigation & Interactive */
+        --sw-nav-active: rgba(14, 165, 233, 0.15); /* Sky blue tint */
+        --sw-nav-active-text: #0284c7; /* Sky 600 */
+
+        --grid-dot-color: rgba(15, 23, 42, 0.04);
+
+        /* Navbar specific */
+        --nav-bg: rgba(255, 255, 255, 0.8);
+        --nav-gradient-start: rgba(255, 255, 255, 0.95);
+        --nav-border: rgba(255, 255, 255, 0.5);
+        --nav-inner-border-start: rgba(255, 255, 255, 0.8);
+
+        --card-bg-light: var(--sw-card);
+        --card-bg-dark: #0f172a;
       }
 
       .dark {
-        --body-bg: #020617;
-        /* slate-950 */
+        /* Deep Navy Glass - Dark Mode */
+        --sw-bg: #020617; /* Slate 950 */
+
+        --sw-card: rgba(15, 23, 42, 0.6);
+        --sw-card-hover: rgba(30, 41, 59, 0.7);
+        --sw-card-highlight: rgba(30, 41, 59, 0.8);
+
+        --sw-text-primary: #f8fafc; /* Slate 50 */
+        --sw-text-secondary: #94a3b8; /* Slate 400 */
+        --sw-text-muted: #64748b; /* Slate 500 */
+
+        --sw-border: rgba(255, 255, 255, 0.08); /* Subtle white border */
+
+        /* Navigation & Interactive */
+        --sw-nav-active: rgba(255, 255, 255, 0.1);
+        --sw-nav-active-text: #ffffff;
+
         --grid-dot-color: rgba(255, 255, 255, 0.05);
+
+        /* Navbar specific */
         --nav-bg: rgba(15, 23, 42, 0.7);
-        /* slate-900 */
         --nav-gradient-start: rgba(255, 255, 255, 0.08);
         --nav-border: rgba(255, 255, 255, 0.1);
         --nav-inner-border-start: rgba(255, 255, 255, 0.2);
-        --sidebar-bg-dark: #0f172a;
+
+        --card-bg-light: #ffffff;
+        --card-bg-dark: var(--sw-card);
       }
 
       body {
-        background-color: var(--body-bg);
+        background-color: var(--sw-bg);
+        color: var(--sw-text-primary);
         background-image: radial-gradient(
           circle at 1px 1px,
           var(--grid-dot-color) 1px,
           transparent 0
         );
         background-size: 25px 25px;
-        transition: background-color 0.3s ease-in-out;
+        transition:
+          background-color 0.3s ease-in-out,
+          color 0.3s ease-in-out;
       }
 
       .glassy-nav-container {

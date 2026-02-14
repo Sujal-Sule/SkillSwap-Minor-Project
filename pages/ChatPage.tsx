@@ -199,31 +199,31 @@ const ChatPage: React.FC<ChatPageProps> = ({
     const isPending = session.status === "proposed";
 
     return (
-      <div className="my-2 p-4 bg-slate-700/50 rounded-lg max-w-sm border border-slate-600">
-        <h4 className="font-bold text-white">
+      <div className="my-2 p-4 bg-surface rounded-2xl max-w-sm border border-border shadow-sm">
+        <h4 className="font-bold text-text-primary">
           {isPending ? "Session Proposed!" : "Session Scheduled"}
         </h4>
-        <p className="text-sm text-slate-300 mt-2">
+        <p className="text-sm text-text-muted mt-2">
           {isProposer
             ? `You proposed this session. Waiting for response.`
             : `Proposed a session with you.`}
         </p>
-        <div className="mt-3 pt-3 border-t border-slate-600/70 space-y-1">
+        <div className="mt-3 pt-3 border-t border-border space-y-1">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Skill:</span>
-            <span className="font-medium text-slate-200">
+            <span className="text-text-muted">Skill:</span>
+            <span className="font-medium text-text-primary">
               {session.skill.name}
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Duration:</span>
-            <span className="font-medium text-slate-200">
+            <span className="text-text-muted">Duration:</span>
+            <span className="font-medium text-text-primary">
               {session.duration} minutes
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Date:</span>
-            <span className="font-medium text-slate-200">
+            <span className="text-text-muted">Date:</span>
+            <span className="font-medium text-text-primary">
               {new Date(session.scheduledTime).toLocaleString([], {
                 dateStyle: "short",
                 timeStyle: "short",
@@ -236,13 +236,13 @@ const ChatPage: React.FC<ChatPageProps> = ({
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => handleSessionResponse(session.id, "accepted")}
-              className="flex-1 px-3 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
+              className="flex-1 px-3 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
             >
               Accept
             </button>
             <button
               onClick={() => handleSessionResponse(session.id, "declined")}
-              className="flex-1 px-3 py-2 bg-slate-600 text-white text-sm font-semibold rounded-lg hover:bg-slate-700 transition-colors"
+              className="flex-1 px-3 py-2 bg-surface-highlight text-text-primary text-sm font-semibold rounded-lg hover:bg-surface-hover border border-border transition-colors"
             >
               Decline
             </button>
@@ -250,14 +250,14 @@ const ChatPage: React.FC<ChatPageProps> = ({
         )}
         {session.status === "scheduled" && (
           <div className="mt-4 text-center">
-            <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
+            <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-semibold rounded-full border border-emerald-500/20">
               Accepted & Scheduled
             </span>
           </div>
         )}
         {session.status === "declined" && (
           <div className="mt-4 text-center">
-            <span className="inline-block px-3 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">
+            <span className="inline-block px-3 py-1 bg-red-500/10 text-red-500 text-xs font-semibold rounded-full border border-red-500/20">
               Session Declined
             </span>
           </div>
@@ -267,10 +267,10 @@ const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   return (
-    <div className="h-[calc(100vh-7rem)] w-full bg-slate-900 text-slate-200 flex font-sans">
+    <div className="h-[calc(100vh-7rem)] w-full bg-background text-text-primary flex font-sans">
       {/* Left Panel: Conversation List */}
-      <aside className="w-80 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
-        <header className="p-4 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+      <aside className="w-80 flex-shrink-0 bg-surface border-r border-border flex flex-col">
+        <header className="p-4 border-b border-border flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
             <img
               src={currentUser.avatarUrl}
@@ -278,23 +278,25 @@ const ChatPage: React.FC<ChatPageProps> = ({
               className="w-10 h-10 rounded-full"
             />
             <div>
-              <h2 className="font-semibold text-white">{currentUser.name}</h2>
-              <p className="text-xs text-emerald-400">Online</p>
+              <h2 className="font-semibold text-text-primary">
+                {currentUser.name}
+              </h2>
+              <p className="text-xs text-emerald-500">Online</p>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-white">
+          <button className="text-text-muted hover:text-text-primary">
             <Cog6ToothIcon className="w-6 h-6" />
           </button>
         </header>
         <div className="p-4 flex-shrink-0">
           <div className="relative">
-            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
               placeholder="Search for users or conversations"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-900 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="w-full bg-background rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-text-primary placeholder-text-muted border border-border"
             />
           </div>
         </div>
@@ -307,26 +309,28 @@ const ChatPage: React.FC<ChatPageProps> = ({
                   className={`w-full flex items-center gap-4 p-5 text-left transition-all duration-200 
                     ${
                       activeChatPartner?.id === user.id
-                        ? "bg-slate-900/70 border-l-2 border-sky-500"
-                        : "hover:bg-slate-700/50 hover:-translate-y-0.5"
+                        ? "bg-surface-highlight border-l-4 border-sky-500 shadow-sm"
+                        : "hover:bg-surface-hover hover:-translate-y-0.5"
                     }`}
                 >
                   <div className="relative">
                     <img
                       src={user.avatarUrl}
                       alt={user.name}
-                      className="w-12 h-12 rounded-full"
+                      className="w-12 h-12 rounded-full object-cover"
                     />
                     {user.isOnline && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-800 rounded-full"></span>
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-surface rounded-full"></span>
                     )}
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <div className="flex justify-between items-baseline">
-                      <p className="font-semibold text-white truncate">
+                      <p
+                        className={`font-semibold truncate ${activeChatPartner?.id === user.id ? "text-sky-600 dark:text-sky-400" : "text-text-primary"}`}
+                      >
                         {user.name}
                       </p>
-                      <p className="text-xs text-slate-400 flex-shrink-0 ml-2">
+                      <p className="text-xs text-text-muted flex-shrink-0 ml-2">
                         {lastMessage
                           ? formatRelativeTime(lastMessage.timestamp)
                           : "New"}
@@ -334,7 +338,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
                     </div>
                     <div className="flex justify-between items-start mt-1">
                       <p
-                        className={`text-sm truncate pr-2 ${unreadCount > 0 ? "text-white font-medium" : "text-slate-400"}`}
+                        className={`text-sm truncate pr-2 ${unreadCount > 0 ? "text-text-primary font-medium" : "text-text-muted"}`}
                       >
                         {lastMessage
                           ? lastMessage.text
@@ -355,32 +359,32 @@ const ChatPage: React.FC<ChatPageProps> = ({
       </aside>
 
       {/* Right Panel: Active Chat */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col bg-background/50">
         {activeChatPartner ? (
           <>
-            <header className="p-5 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+            <header className="p-5 border-b border-border flex justify-between items-center flex-shrink-0 bg-surface/80 backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <img
                     src={activeChatPartner.avatarUrl}
                     alt={activeChatPartner.name}
-                    className="w-12 h-12 rounded-full"
+                    className="w-12 h-12 rounded-full object-cover"
                   />
                   {activeChatPartner.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-surface rounded-full"></span>
                   )}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-white text-lg">
+                  <h2 className="font-semibold text-text-primary text-lg">
                     {activeChatPartner.name}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-emerald-400">Online</p>
+                    <p className="text-xs text-emerald-500">Online</p>
                     {/* Shared skills tags */}
                     {activeChatPartner.skills?.slice(0, 2).map((skill, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-0.5 text-xs bg-sky-500/10 text-sky-400 rounded border border-sky-500/20"
+                        className="px-2 py-0.5 text-xs bg-sky-500/10 text-sky-500 rounded border border-sky-500/20"
                       >
                         {skill.name}
                       </span>
@@ -391,7 +395,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
               <div className="flex items-center gap-4 relative">
                 {/* Removed VideoCameraIcon */}
                 <button
-                  className="text-slate-400 hover:text-white"
+                  className="text-text-muted hover:text-text-primary"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(!showMenu);
@@ -400,9 +404,9 @@ const ChatPage: React.FC<ChatPageProps> = ({
                   <EllipsisVerticalIcon className="w-6 h-6" />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-10 w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg py-1 z-50">
+                  <div className="absolute right-0 top-10 w-48 bg-surface border border-border rounded-md shadow-lg py-1 z-50">
                     <button
-                      className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700"
+                      className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-surface-hover"
                       onClick={() => {
                         if (
                           confirm(
@@ -442,7 +446,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
                 if (msg.messageType === "ai_suggestion") {
                   return (
                     <div key={msg.id} className="flex justify-center">
-                      <button className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-700/50 border border-slate-600/80 rounded-full text-sky-300 hover:bg-slate-700 transition-colors">
+                      <button className="flex items-center gap-2 px-4 py-2 text-sm bg-surface-highlight border border-border rounded-full text-sky-500 hover:bg-surface-hover transition-colors shadow-sm">
                         <SparklesIcon className="w-4 h-4" />
                         <span>{msg.text}</span>
                       </button>
@@ -472,10 +476,10 @@ const ChatPage: React.FC<ChatPageProps> = ({
                       />
                     )}
                     <div
-                      className={`max-w-md px-5 py-3 rounded-3xl shadow-sm ${
+                      className={`max-w-md px-5 py-3 rounded-2xl shadow-sm border ${
                         isSender
-                          ? "bg-sky-500 text-white rounded-br-md"
-                          : "bg-slate-700/70 text-slate-100 rounded-bl-md"
+                          ? "bg-sky-500 text-white rounded-br-none border-sky-600"
+                          : "bg-surface text-text-primary rounded-bl-none border-border"
                       }`}
                     >
                       <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -486,14 +490,14 @@ const ChatPage: React.FC<ChatPageProps> = ({
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-5 border-t border-slate-700 bg-slate-800/50 backdrop-blur-sm shadow-lg flex-shrink-0">
+            <div className="p-5 border-t border-border bg-surface/80 backdrop-blur-md shadow-lg flex-shrink-0">
               <form
                 onSubmit={handleSendMessage}
                 className="flex items-center gap-4"
               >
                 <button
                   type="button"
-                  className="p-2.5 text-slate-400 hover:text-white transition-colors"
+                  className="p-2.5 text-text-muted hover:text-text-primary transition-colors"
                 >
                   <MicrophoneIcon className="w-5 h-5" />
                 </button>
@@ -502,7 +506,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 bg-slate-700 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow"
+                  className="flex-1 bg-background border border-border rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow text-text-primary placeholder-text-muted"
                 />
                 <motion.button
                   type="submit"

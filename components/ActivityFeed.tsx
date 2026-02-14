@@ -121,29 +121,27 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+    <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-text-primary mb-4">
         Recent Activity
       </h3>
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {activities.map((activity) => (
           <div
             key={activity.id}
-            className="flex items-start gap-3 py-2 border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+            className="flex items-start gap-3 py-2 border-b border-border last:border-0"
           >
             <span className="text-lg flex-shrink-0">{activity.icon}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-slate-700 dark:text-slate-300">
-                {activity.text}
-              </p>
+              <p className="text-sm text-text-secondary">{activity.text}</p>
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
+            <span className="text-xs text-text-muted flex-shrink-0">
               {getTimeAgo(activity.timestamp)}
             </span>
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+      <div className="mt-4 pt-3 border-t border-border">
         <button className="text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 font-medium">
           View all activity
         </button>
