@@ -321,93 +321,32 @@ const App: React.FC = () => {
     if (currentUser) {
       fetchMessages();
 
-      // Connect WebSocket
-      const socketUrl = getWebSocketUrl(`chat/ws/${currentUser.id}`);
-      ws.current = new WebSocket(socketUrl);
+      // --- WebSocket with reconnection, heartbeat, and signal dedup ---
+      let reconnectAttempts = 0;
+      const MAX_RECONNECT_DELAY = 16000;
+      let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+      let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+      let intentionallyClosed = false;
 
-      ws.current.onopen = () => {
-        console.log("WebSocket connected for user:", currentUser.id);
-        // Flush queued signals
-        while (signalQueue.length) {
-          const e = signalQueue.shift();
-          if (e) {
-            const payload = {
-              receiverId: e.detail.target,
-              text: JSON.stringify(e.detail),
-              messageType: "signal",
-            };
-            ws.current?.send(JSON.stringify(payload));
-            console.log("Flushed queued signal", e.detail);
-          }
+      // Signal deduplication — track recently processed signal IDs
+      const processedSignalIds = new Set<string>();
+      const MAX_SIGNAL_CACHE = 500;
+
+      function isSignalDuplicate(signalId: string): boolean {
+        if (!signalId) return false;
+        if (processedSignalIds.has(signalId)) return true;
+        processedSignalIds.add(signalId);
+        if (processedSignalIds.size > MAX_SIGNAL_CACHE) {
+          const toKeep = Array.from(processedSignalIds).slice(-400);
+          processedSignalIds.clear();
+          toKeep.forEach((id) => processedSignalIds.add(id));
         }
-      };
+        return false;
+      }
 
-      ws.current.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+      // Signal queue for messages sent before WS is open
+      const signalQueue: CustomEvent[] = [];
 
-        // Handle WebRTC Signals directly
-        if (data.messageType === "signal") {
-          if (data.text) {
-            try {
-              const signalPayload = JSON.parse(data.text);
-              // Verify target matches current user (should be guaranteed by backend routing but good for sanity)
-              // The backend sent it to us, so we are the target.
-              // But the signal payload has 'target' field?
-              // e.detail structure from LiveSession was: { target, sender, payload }
-              // We wrapped it in text.
-              window.dispatchEvent(
-                new CustomEvent("webrtc-signal", { detail: signalPayload }),
-              );
-            } catch (e) {
-              console.error("Failed to parse signal payload", e);
-            }
-          }
-          return; // Do not process as chat message
-        }
-
-        console.log("WS Received:", data); // DEBUG LOG
-
-        // Parse session data if present
-        const sessionData = data.session
-          ? {
-              ...data.session,
-              id: data.session._id || data.session.id,
-              scheduledTime: parseAsUTC(data.session.scheduledTime),
-              startedAt: data.session.startedAt
-                ? parseAsUTC(data.session.startedAt)
-                : undefined,
-            }
-          : undefined;
-
-        const parsedMessage: Message = {
-          ...data,
-          timestamp: parseAsUTC(data.timestamp),
-          id: data._id || data.id,
-          session: sessionData,
-          isRead: data.isRead ?? false, // Ensure isRead is set, default to false
-        };
-
-        setMessages((prev) => {
-          // Avoid duplicates if we sent it and got it back (server echoes messages)
-          if (prev.some((m) => m.id === parsedMessage.id)) return prev;
-          return [...prev, parsedMessage];
-        });
-
-        // Refresh data if it's a session-related message or a session card
-        if (
-          parsedMessage.session ||
-          parsedMessage.messageType === "session_card"
-        ) {
-          fetchData();
-        }
-      };
-
-      ws.current.onclose = () => {
-        console.log("WebSocket Disconnected");
-      };
-
-      // WebRTC Signal Sender Listener
-      const signalQueue: CustomEvent[] = []; // Simple queue for this session
       const handleWebRTCSend = (e: CustomEvent) => {
         const payload = {
           receiverId: e.detail.target,
@@ -418,35 +357,169 @@ const App: React.FC = () => {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           ws.current.send(JSON.stringify(payload));
         } else {
-          console.warn("WS not ready to send signal, queuing...", e.detail);
-          signalQueue.push(e); // Keep event to retry logic or push payload?
-          // Better to just retry sending if we hook into onopen
+          console.warn("WS not ready to send signal, queuing...");
+          signalQueue.push(e);
         }
       };
+
+      function connectWebSocket() {
+        if (intentionallyClosed) return;
+
+        const socketUrl = getWebSocketUrl(`chat/ws/${currentUser!.id}`);
+        const socket = new WebSocket(socketUrl);
+        ws.current = socket;
+
+        socket.onopen = () => {
+          console.log("WebSocket connected for user:", currentUser!.id);
+          reconnectAttempts = 0;
+
+          // Flush queued signals
+          while (signalQueue.length) {
+            const e = signalQueue.shift();
+            if (e) {
+              const payload = {
+                receiverId: e.detail.target,
+                text: JSON.stringify(e.detail),
+                messageType: "signal",
+              };
+              socket.send(JSON.stringify(payload));
+            }
+          }
+
+          // Start heartbeat (respond to server pings, send our own pongs pre-emptively)
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          heartbeatInterval = setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: "pong" }));
+            }
+          }, 25000);
+
+          // Signal that transport is ready
+          (window as any).SKILLSWAP_SIGNAL_READY = true;
+          window.dispatchEvent(new CustomEvent("skillswap-signal-ready"));
+        };
+
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+
+          // Handle server heartbeat ping
+          if (data.type === "ping") {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: "pong" }));
+            }
+            return;
+          }
+
+          // Handle WebRTC Signals
+          if (data.messageType === "signal") {
+            if (data.text) {
+              try {
+                const signalPayload = JSON.parse(data.text);
+
+                // Deduplicate signals
+                if (
+                  signalPayload.signalId &&
+                  isSignalDuplicate(signalPayload.signalId)
+                ) {
+                  return;
+                }
+
+                window.dispatchEvent(
+                  new CustomEvent("webrtc-signal", { detail: signalPayload }),
+                );
+              } catch (e) {
+                console.error("Failed to parse signal payload", e);
+              }
+            }
+            return;
+          }
+
+          console.log("WS Received:", data);
+
+          // Parse session data if present
+          const sessionData = data.session
+            ? {
+                ...data.session,
+                id: data.session._id || data.session.id,
+                scheduledTime: parseAsUTC(data.session.scheduledTime),
+                startedAt: data.session.startedAt
+                  ? parseAsUTC(data.session.startedAt)
+                  : undefined,
+              }
+            : undefined;
+
+          const parsedMessage: Message = {
+            ...data,
+            timestamp: parseAsUTC(data.timestamp),
+            id: data._id || data.id,
+            session: sessionData,
+            isRead: data.isRead ?? false,
+          };
+
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === parsedMessage.id)) return prev;
+            return [...prev, parsedMessage];
+          });
+
+          if (
+            parsedMessage.session ||
+            parsedMessage.messageType === "session_card"
+          ) {
+            fetchData();
+          }
+        };
+
+        socket.onclose = (event) => {
+          console.log("WebSocket Disconnected", event.code, event.reason);
+          (window as any).SKILLSWAP_SIGNAL_READY = false;
+
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+          }
+
+          // Auto-reconnect with exponential backoff (unless intentionally closed)
+          if (!intentionallyClosed) {
+            const delay = Math.min(
+              1000 * Math.pow(2, reconnectAttempts),
+              MAX_RECONNECT_DELAY,
+            );
+            reconnectAttempts++;
+            console.log(
+              `WebSocket reconnecting in ${delay}ms (attempt ${reconnectAttempts})`,
+            );
+            reconnectTimeout = setTimeout(connectWebSocket, delay);
+          }
+        };
+
+        socket.onerror = (error) => {
+          console.error("WebSocket error:", error);
+        };
+      }
+
+      // Start connection
+      connectWebSocket();
+
       window.addEventListener(
         "send-webrtc-signal",
         handleWebRTCSend as EventListener,
       );
 
-      // Signal that transport is ready
-      (window as any).SKILLSWAP_SIGNAL_READY = true;
-      window.dispatchEvent(new CustomEvent("skillswap-signal-ready"));
-
       return () => {
+        intentionallyClosed = true;
         (window as any).SKILLSWAP_SIGNAL_READY = false;
         window.removeEventListener(
           "send-webrtc-signal",
           handleWebRTCSend as EventListener,
         );
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
         if (ws.current) {
-          // ...
-
-          console.log("WebSocket Disconnected");
           ws.current.close();
         }
       };
     }
-  }, [currentUser?.id]); // Only reconnect if user ID changes, not just any user data update
+  }, [currentUser?.id]);
 
   const handleSendMessage = async (text: string, receiverId: string) => {
     if (!currentUser || !ws.current || ws.current.readyState !== WebSocket.OPEN)

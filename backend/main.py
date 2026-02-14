@@ -12,7 +12,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await close_mongo_connection()
 
-from .routers import auth, users, connections, sessions, chat, whiteboard, notifications
+from .routers import auth, users, connections, sessions, chat, whiteboard, notifications, turn
 
 app = FastAPI(lifespan=lifespan, title="SkillSwap API")
 
@@ -23,6 +23,7 @@ app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(whiteboard.router)
 app.include_router(notifications.router)
+app.include_router(turn.router)
 
 
 from .routers import admin

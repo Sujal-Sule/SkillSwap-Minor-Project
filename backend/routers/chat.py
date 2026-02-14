@@ -3,6 +3,7 @@ from typing import List, Dict
 from ..database import get_database
 from ..models import Message
 import json
+import asyncio
 from datetime import datetime
 from ..dependencies import get_current_user
 
@@ -29,21 +30,53 @@ class ConnectionManager:
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
             txt = json.dumps(message, default=str)
+            dead_connections = []
             for connection in self.active_connections[user_id]:
-                await connection.send_text(txt)
+                try:
+                    await connection.send_text(txt)
+                except Exception:
+                    dead_connections.append(connection)
+            # Clean up dead connections
+            for dead in dead_connections:
+                if dead in self.active_connections.get(user_id, []):
+                    self.active_connections[user_id].remove(dead)
+            if user_id in self.active_connections and not self.active_connections[user_id]:
+                del self.active_connections[user_id]
 
 manager = ConnectionManager()
+
+
+async def heartbeat(websocket: WebSocket, user_id: str):
+    """Send periodic pings to detect dead connections."""
+    try:
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await websocket.send_json({"type": "ping"})
+            except Exception:
+                break
+    except asyncio.CancelledError:
+        pass
+
 
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     # In a real app, validate token in query param or headers (headers tricky in JS WebSocket)
     await manager.connect(websocket, user_id)
     db = get_database()
+
+    # Start heartbeat task
+    heartbeat_task = asyncio.create_task(heartbeat(websocket, user_id))
+
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
-            
+
+            # Handle pong response from client heartbeat
+            if message_data.get('type') == 'pong':
+                continue
+
             # Message structure: {receiverId: str, text: str, ...}
             receiver_id = message_data.get('receiverId')
             text = message_data.get('text')
@@ -61,8 +94,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                         "text": text,
                         "timestamp": datetime.now().isoformat(),
                         "messageType": 'signal',
-                        # We might need to pass the raw signal data if it was in text
-                        # But since we use 'text' field to carry the payload, we just pass it through.
                     }
                     await manager.send_personal_message(ephemeral_msg, receiver_id)
                     continue
@@ -90,6 +121,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         print(f"DEBUG: WebSocket disconnect {user_id}") # DEBUG
         manager.disconnect(websocket, user_id)
+    finally:
+        heartbeat_task.cancel()
 
 @router.get("/", response_model=List[Message])
 async def get_messages(current_user: dict = Depends(get_current_user)):

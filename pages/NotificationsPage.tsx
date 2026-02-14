@@ -22,6 +22,52 @@ interface NotificationsPageProps {
 
 type TabType = "incoming" | "sent" | "activity";
 
+const TabButton = ({
+  id,
+  activeTab,
+  setActiveTab,
+  label,
+  count,
+  icon,
+}: {
+  id: TabType;
+  activeTab: TabType;
+  setActiveTab: (id: TabType) => void;
+  label: string;
+  count?: number;
+  icon: React.ReactNode;
+}) => (
+  <button
+    onClick={() => setActiveTab(id)}
+    className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all relative ${
+      activeTab === id
+        ? "bg-slate-800 text-white shadow-lg shadow-slate-900/10"
+        : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
+    }`}
+  >
+    {icon}
+    {label}
+    {count !== undefined && count > 0 && (
+      <span
+        className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${
+          activeTab === id
+            ? "bg-white text-slate-900"
+            : "bg-slate-700 text-slate-300"
+        }`}
+      >
+        {count}
+      </span>
+    )}
+    {activeTab === id && (
+      <motion.div
+        layoutId="activeNotificationTab"
+        className="absolute inset-0 rounded-full border border-slate-700/50 -z-10 bg-slate-800"
+        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+      />
+    )}
+  </button>
+);
+
 const NotificationsPage: React.FC<NotificationsPageProps> = ({
   requests,
   handleRequest,
@@ -78,47 +124,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
   const getUser = (id: string): User | undefined =>
     users.find((u) => u.id === id);
 
-  const TabButton = ({
-    id,
-    label,
-    count,
-    icon,
-  }: {
-    id: TabType;
-    label: string;
-    count?: number;
-    icon: React.ReactNode;
-  }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all relative ${
-        activeTab === id
-          ? "bg-slate-800 text-white shadow-lg shadow-slate-900/10"
-          : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
-      }`}
-    >
-      {icon}
-      {label}
-      {count !== undefined && count > 0 && (
-        <span
-          className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${
-            activeTab === id
-              ? "bg-white text-slate-900"
-              : "bg-slate-700 text-slate-300"
-          }`}
-        >
-          {count}
-        </span>
-      )}
-      {activeTab === id && (
-        <motion.div
-          layoutId="activeTab"
-          className="absolute inset-0 rounded-full border border-slate-700/50 -z-10 bg-slate-800"
-          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-        />
-      )}
-    </button>
-  );
+  /* TabButton component moved outside */
 
   return (
     <div className="pt-36 pb-20 px-6 max-w-4xl mx-auto min-h-screen">
@@ -140,18 +146,24 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
       <div className="flex flex-wrap gap-2 mb-10 bg-slate-900/50 p-1.5 rounded-full border border-slate-800/50 w-full md:w-fit mx-auto md:mx-0 backdrop-blur-sm">
         <TabButton
           id="incoming"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           label="Incoming"
           count={incoming.length}
           icon={<InboxIcon className="w-4 h-4" />}
         />
         <TabButton
           id="sent"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           label="Sent"
           count={outgoing.length}
           icon={<PaperAirplaneIcon className="w-4 h-4" />}
         />
         <TabButton
           id="activity"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           label="All Activity"
           icon={<BellIcon className="w-4 h-4" />}
         />
