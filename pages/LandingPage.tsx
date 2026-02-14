@@ -34,7 +34,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       outcome: "Learned Guitar in 4 Weeks",
       rater: {
         id: "u-lp1",
-        name: "Alex Johnson",
+        name: "Krishna Sule",
         avatarUrl: "https://picsum.photos/seed/alex/200",
       } as User,
     },
@@ -49,7 +49,7 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       outcome: "Saved $500 on Courses",
       rater: {
         id: "u-lp2",
-        name: "Maria Garcia",
+        name: "Virat Sharma",
         avatarUrl: "https://picsum.photos/seed/maria/200",
       } as User,
     },
@@ -58,14 +58,14 @@ const landingPageTestimonials: (Rating & { rater: User; outcome?: string })[] =
       sessionId: "s-lp3",
       raterId: "u-lp3",
       ratedId: "platform",
-      stars: 5,
+      stars: 4,
       feedback:
         "The AI Coach planned my Python learning path perfectly. Finished in 2 weeks instead of 2 months. Seriously a game-changer.",
       outcome: "Learned Python in 2 Weeks",
       rater: {
         id: "u-lp3",
-        name: "Sam Chen",
-        avatarUrl: "https://picsum.photos/seed/sam/200",
+        name: "Rajnandani Kushwah",
+        avatarUrl: "https://www.gettyimages.in/detail/photo/one-businesswoman-studio-portrait-looking-at-the-royalty-free-image/1317804584",
       } as User,
     },
     {

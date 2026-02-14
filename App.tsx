@@ -118,7 +118,6 @@ const Layout = ({
 };
 
 const App: React.FC = () => {
-  // Consume Auth Context
   const {
     currentUser,
     isAdmin,
@@ -130,7 +129,6 @@ const App: React.FC = () => {
     updateUser,
   } = React.useContext(AuthContext);
 
-  const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
 
   // State relevant to specific pages - simpler to keep here for this refactor than moving all to context or pages
@@ -215,12 +213,6 @@ const App: React.FC = () => {
       fetchData();
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    // Simulate asset loading (UI splash)
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -803,11 +795,12 @@ const App: React.FC = () => {
     },
   ];
 
-  if (isLoading || authLoading) {
-    return <LoadingScreen />;
+  if (!hasStarted && !currentUser && !authLoading) {
+    return <LandingPage onGetStarted={() => setHasStarted(true)} />;
   }
 
-  if (!hasStarted) {
+  // Show landing page if not started, or if we're still determining auth but want SEO visibility
+  if (!hasStarted && !currentUser) {
     return <LandingPage onGetStarted={() => setHasStarted(true)} />;
   }
 

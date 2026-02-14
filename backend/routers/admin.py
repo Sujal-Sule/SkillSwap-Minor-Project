@@ -104,11 +104,39 @@ async def get_admin_stats(admin: UserInDB = Depends(get_current_admin)):
     total_sessions = await db_mongo.sessions.count_documents({})
     completed_sessions = await db_mongo.sessions.count_documents({"status": "completed"})
     
+    # Acquisition Trend (Last 30 days)
+    from datetime import datetime, timedelta
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    trend_data = []
+    for i in range(29, -1, -1):
+        target_day = today - timedelta(days=i)
+        next_day = target_day + timedelta(days=1)
+        
+        count = 0
+        for u in all_users:
+            created_at = u.get('createdAt')
+            if not created_at:
+                continue
+                
+            # Convert to datetime if it's a string (from Firestore or Pydantic)
+            if isinstance(created_at, str):
+                try:
+                    # Handle Z and +00:00
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    continue
+            
+            # Firestore SDK might return datetime objects directly
+            if target_day <= created_at.replace(tzinfo=None) < next_day:
+                count += 1
+        trend_data.append(count)
+
     return {
         "totalUsers": total_users,
         "activeUsers": active_users,
         "suspendedUsers": suspended_users,
         "totalTokens": total_tokens_circ,
         "totalSessions": total_sessions,
-        "completedSessions": completed_sessions
+        "completedSessions": completed_sessions,
+        "acquisitionTrend": trend_data
     }

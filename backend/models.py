@@ -22,6 +22,7 @@ class UserBase(BaseModel):
     isOnline: bool = False
     isAdmin: bool = False
     isSuspended: bool = False
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
     password: Optional[str] = None # For email/password auth (hashed)
 
 class UserCreate(UserBase):
