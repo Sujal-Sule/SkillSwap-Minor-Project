@@ -1,55 +1,92 @@
-import React, { useRef } from 'react';
-import { motion } from 'framer-motion';
-import type { User, Rating } from '../types';
+import React, { useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import type { User, Rating } from "../types";
 
 type Testimonial = Rating & { rater: User; outcome?: string };
 
 interface DraggableTestimonialsProps {
-    testimonials: Testimonial[];
+  testimonials: Testimonial[];
 }
 
-const DraggableTestimonials: React.FC<DraggableTestimonialsProps> = ({ testimonials }) => {
-    const constraintsRef = useRef(null);
+const DraggableTestimonials: React.FC<DraggableTestimonialsProps> = ({
+  testimonials,
+}) => {
+  const [width, setWidth] = useState(0);
+  const carousel = useRef<HTMLDivElement>(null);
 
-    return (
-        <div ref={constraintsRef} className="overflow-x-auto pb-4 cursor-grab active:cursor-grabbing hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <motion.div
-                className="flex gap-4"
-            >
-                {testimonials.map((testimonial, index) => (
-                    <div
-                        key={testimonial.id}
-                        className="flex-shrink-0 w-[320px] bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-sky-500/10 hover:border-sky-200 dark:hover:border-sky-500/30"
-                    >
-                        {/* Outcome Badge */}
-                        {testimonial.outcome && (
-                            <div className="mb-4">
-                                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-500/30">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    {testimonial.outcome}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex items-center space-x-4 mb-4">
-                            <img src={testimonial.rater.avatarUrl} alt={testimonial.rater.name} className="w-12 h-12 rounded-full border-2 border-white dark:border-slate-700 shadow-md" />
-                            <div>
-                                <div className="flex items-center gap-1">
-                                    <p className="font-bold text-slate-900 dark:text-white">{testimonial.rater.name}</p>
-                                    <svg className="w-4 h-4 text-sky-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="flex text-amber-400 text-sm">
-                                    {'★'.repeat(testimonial.stars)}{'☆'.repeat(5 - testimonial.stars)}
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">"{testimonial.feedback}"</p>
-                    </div>
-                ))}
-            </motion.div>
-        </div>
-    );
+  useEffect(() => {
+    if (carousel.current) {
+      setWidth(carousel.current.scrollWidth - carousel.current.offsetWidth);
+    }
+  }, [testimonials]);
+
+  return (
+    <div ref={carousel} className="cursor-grab overflow-hidden">
+      <motion.div
+        drag="x"
+        dragConstraints={{ right: 0, left: -width }}
+        whileTap={{ cursor: "grabbing" }}
+        className="flex gap-6 pl-2"
+      >
+        {testimonials.map((testimonial, index) => (
+          <div
+            key={testimonial.id}
+            className="flex-shrink-0 w-[400px] bg-slate-800/40 backdrop-blur-sm p-8 rounded-3xl border border-slate-700 hover:border-sky-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-sky-500/5 group relative overflow-hidden"
+          >
+            {/* Decorative Quote Mark */}
+            <div className="absolute top-6 right-8 text-6xl text-slate-700/20 font-serif leading-none select-none">
+              "
+            </div>
+
+            <div className="flex items-start gap-4 mb-6">
+              <img
+                src={testimonial.rater.avatarUrl}
+                alt={testimonial.rater.name}
+                className="w-14 h-14 rounded-full border-2 border-slate-600 group-hover:border-sky-500/50 transition-colors shadow-lg"
+              />
+              <div>
+                <h4 className="font-bold text-lg text-slate-100">
+                  {testimonial.rater.name}
+                </h4>
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wide">
+                  {testimonial.outcome || "Video Session"} •{" "}
+                  <span className="text-slate-500">2 days ago</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div className="flex items-center gap-1 mb-4 bg-amber-500/5 w-fit px-2 py-1 rounded-md border border-amber-500/10">
+              {[...Array(5)].map((_, i) => (
+                <svg
+                  key={i}
+                  className={`w-4 h-4 ${i < testimonial.stars ? "text-amber-400 fill-amber-400" : "text-slate-700"}`}
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+              <span className="ml-2 text-sm font-bold text-amber-100">
+                {testimonial.stars}.0
+              </span>
+            </div>
+
+            <p className="text-slate-300 leading-relaxed italic relative z-10">
+              "{testimonial.feedback}"
+            </p>
+
+            {/* Verified Badge - mocked connection check logic or just existing logic */}
+            {testimonial.rater.connections && (
+              <div className="mt-6 flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                Verified Student
+              </div>
+            )}
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
 };
 
 export default DraggableTestimonials;
