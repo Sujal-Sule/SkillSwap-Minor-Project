@@ -104,9 +104,11 @@ const Layout = ({
 
       <main
         className={`${
-          location.pathname === "/chat" || location.pathname === "/ai-coach"
+          location.pathname === "/chat"
             ? "pt-20 px-0 h-[calc(100vh-80px)]"
-            : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
+            : location.pathname === "/coach"
+              ? "fixed top-0 left-0 w-full h-full pt-0 z-0 overflow-hidden"
+              : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
         }`}
       >
         {children}
@@ -149,7 +151,21 @@ const App: React.FC = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("theme") as
+        | "light"
+        | "dark"
+        | null;
+      if (savedTheme) {
+        return savedTheme;
+      }
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+    }
+    return "light";
+  });
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Data Fetching
@@ -212,6 +228,7 @@ const App: React.FC = () => {
     } else {
       document.documentElement.classList.remove("dark");
     }
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

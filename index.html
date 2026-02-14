@@ -157,6 +157,9 @@
 
         --card-bg-light: var(--sw-card);
         --card-bg-dark: #0f172a;
+
+        /* Spotlight Animation - Darker for visibility in light mode */
+        --spotlight-color: hsla(197, 92%, 40%, 0.25);
       }
 
       .dark {
@@ -187,6 +190,9 @@
 
         --card-bg-light: #ffffff;
         --card-bg-dark: var(--sw-card);
+
+        /* Spotlight Animation - Original lighter value for dark mode */
+        --spotlight-color: hsla(197, 92%, 52%, 0.15);
       }
 
       body {
@@ -277,7 +283,7 @@
         bottom: 0;
         background: radial-gradient(
           600px circle at var(--mouse-x) var(--mouse-y),
-          hsla(197, 92%, 52%, 0.15),
+          var(--spotlight-color),
           transparent 80%
         );
         pointer-events: none;
@@ -510,6 +516,30 @@
           rgba(71, 85, 105, 0.3) 50%,
           transparent 100%
         );
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--sw-border);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--sw-text-muted);
+      }
+
+      /* Firefox */
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: var(--sw-border) transparent;
       }
     </style>
 

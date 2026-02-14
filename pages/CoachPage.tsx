@@ -77,9 +77,9 @@ const CoachPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-surface">
+    <div className="flex flex-col h-full w-full bg-surface pt-20 overflow-hidden relative">
       {/* Premium Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border bg-surface/50 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-6 border-b border-border bg-surface/50 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-4">
           <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-purple-500 flex items-center justify-center shadow-lg shadow-sky-500/30">
             <SparklesIcon className="w-7 h-7 text-white" />
@@ -109,7 +109,10 @@ const CoachPage: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 p-6 overflow-y-auto space-y-6">
+      <div
+        className="flex-1 p-6 overflow-y-auto space-y-6 min-h-0"
+        id="coach-messages-container"
+      >
         {messages.map((msg, index) => (
           <motion.div
             key={index}
