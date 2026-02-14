@@ -77,7 +77,7 @@ const CoachPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-210px)] md:h-[calc(100vh-144px)] max-w-5xl mx-auto bg-surface rounded-lg shadow-2xl border border-border">
+    <div className="flex flex-col h-full w-full bg-surface">
       {/* Premium Header */}
       <div className="flex items-center justify-between p-6 border-b border-border bg-surface/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">

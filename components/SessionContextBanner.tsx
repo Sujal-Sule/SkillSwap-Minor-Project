@@ -24,9 +24,9 @@ const SessionContextBanner: React.FC<SessionContextBannerProps> = ({
       <div className="px-6 py-3 bg-sky-500/10 border-b border-sky-500/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <AcademicCapIcon className="w-5 h-5 text-sky-400" />
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-text-muted">
             No active session —{" "}
-            <span className="text-sky-400">
+            <span className="text-sky-500 font-medium">
               Propose one to start learning together
             </span>
           </p>

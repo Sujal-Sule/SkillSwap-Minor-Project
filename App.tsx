@@ -104,7 +104,7 @@ const Layout = ({
 
       <main
         className={`${
-          location.pathname === "/chat"
+          location.pathname === "/chat" || location.pathname === "/ai-coach"
             ? "pt-20 px-0 h-[calc(100vh-80px)]"
             : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
         }`}
