@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { User, ConnectionRequest, Notification } from "../types";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -37,13 +37,15 @@ const TabButton = ({
   count?: number;
   icon: React.ReactNode;
 }) => (
-  <button
+  <motion.button
     onClick={() => setActiveTab(id)}
     className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all relative ${
       activeTab === id
         ? "bg-slate-800 text-white shadow-lg shadow-slate-900/10"
         : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
     }`}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
   >
     {icon}
     {label}
@@ -65,7 +67,7 @@ const TabButton = ({
         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
       />
     )}
-  </button>
+  </motion.button>
 );
 
 const NotificationsPage: React.FC<NotificationsPageProps> = ({
@@ -143,31 +145,33 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-10 bg-slate-900/50 p-1.5 rounded-full border border-slate-800/50 w-full md:w-fit mx-auto md:mx-0 backdrop-blur-sm">
-        <TabButton
-          id="incoming"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          label="Incoming"
-          count={incoming.length}
-          icon={<InboxIcon className="w-4 h-4" />}
-        />
-        <TabButton
-          id="sent"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          label="Sent"
-          count={outgoing.length}
-          icon={<PaperAirplaneIcon className="w-4 h-4" />}
-        />
-        <TabButton
-          id="activity"
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          label="All Activity"
-          icon={<BellIcon className="w-4 h-4" />}
-        />
-      </div>
+      <LayoutGroup>
+        <div className="flex flex-wrap gap-2 mb-10 bg-slate-900/50 p-1.5 rounded-full border border-slate-800/50 w-full md:w-fit mx-auto md:mx-0 backdrop-blur-sm">
+          <TabButton
+            id="incoming"
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            label="Incoming"
+            count={incoming.length}
+            icon={<InboxIcon className="w-4 h-4" />}
+          />
+          <TabButton
+            id="sent"
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            label="Sent"
+            count={outgoing.length}
+            icon={<PaperAirplaneIcon className="w-4 h-4" />}
+          />
+          <TabButton
+            id="activity"
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            label="All Activity"
+            icon={<BellIcon className="w-4 h-4" />}
+          />
+        </div>
+      </LayoutGroup>
 
       {/* Content Area */}
       <AnimatePresence mode="wait">
