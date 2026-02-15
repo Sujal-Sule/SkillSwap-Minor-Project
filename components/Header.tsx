@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 interface HeaderProps {
-  currentUser: User;
+  currentUser?: User;
   isAdmin: boolean;
   logout: () => void;
   theme: "light" | "dark";
@@ -96,7 +96,7 @@ const Header: React.FC<HeaderProps> = ({
           {/* Right side controls */}
           <div className="flex items-center gap-6">
             {/* Token Balance - Gamified */}
-            {!isAdmin && (
+            {!isAdmin && currentUser && (
               <div className="hidden sm:flex items-center gap-2.5 bg-surface/50 rounded-full px-5 py-2 border border-amber-500/30 shadow-lg shadow-amber-500/20">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[11px] font-bold text-white shadow-inner shadow-amber-900/50">
                   S
@@ -115,53 +115,62 @@ const Header: React.FC<HeaderProps> = ({
             {/* Theme Toggle */}
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
-            {/* Profile & Logout */}
-            <div className="flex items-center gap-4">
-              <div
-                className="flex items-center gap-3 cursor-pointer group"
-                onClick={() => navigate("/profile")}
-              >
-                <div className="text-right hidden md:block">
-                  <div className="text-sm font-bold text-text-primary group-hover:text-sky-500 transition-colors">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-xs text-text-muted">Free Plan</div>
-                </div>
-                <div className="relative">
-                  <img
-                    className="h-10 w-10 rounded-full object-cover border-2 border-border group-hover:border-sky-500 transition-colors shadow-md"
-                    src={
-                      currentUser.avatarUrl ||
-                      "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
-                        currentUser.id
-                    }
-                    alt={currentUser.name}
-                  />
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-surface rounded-full"></div>
-                </div>
-              </div>
-
-              <button
-                onClick={logout}
-                className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
-                title="Logout"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="w-5 h-5"
+            {/* Profile & Logout or Login */}
+            {currentUser ? (
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => navigate("/profile")}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-                  />
-                </svg>
+                  <div className="text-right hidden md:block">
+                    <div className="text-sm font-bold text-text-primary group-hover:text-sky-500 transition-colors">
+                      {currentUser.name}
+                    </div>
+                    <div className="text-xs text-text-muted">Free Plan</div>
+                  </div>
+                  <div className="relative">
+                    <img
+                      className="h-10 w-10 rounded-full object-cover border-2 border-border group-hover:border-sky-500 transition-colors shadow-md"
+                      src={
+                        currentUser.avatarUrl ||
+                        "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
+                          currentUser.id
+                      }
+                      alt={currentUser.name}
+                    />
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-surface rounded-full"></div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={logout}
+                  className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                  title="Logout"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate("/login")}
+                className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-full shadow-lg shadow-sky-500/25 transition-all active:scale-95"
+              >
+                Login
               </button>
-            </div>
+            )}
           </div>
         </div>
       </div>

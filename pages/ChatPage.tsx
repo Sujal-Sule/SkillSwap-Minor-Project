@@ -11,7 +11,6 @@ import type { User, Message, Session } from "../types";
 import {
   PaperAirplaneIcon,
   AcademicCapIcon,
-  MicrophoneIcon,
   SparklesIcon,
   Cog6ToothIcon,
   MagnifyingGlassIcon,
@@ -495,12 +494,6 @@ const ChatPage: React.FC<ChatPageProps> = ({
                 onSubmit={handleSendMessage}
                 className="flex items-center gap-4"
               >
-                <button
-                  type="button"
-                  className="p-2.5 text-text-muted hover:text-text-primary transition-colors"
-                >
-                  <MicrophoneIcon className="w-5 h-5" />
-                </button>
                 <input
                   type="text"
                   value={newMessage}

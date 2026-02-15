@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  Component,
+  ReactNode,
+  ErrorInfo,
+} from "react";
 import type {
   User,
   ConnectionRequest,
@@ -29,11 +36,19 @@ import CoachPage from "./pages/CoachPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import UserProfilePage from "./pages/UserProfilePage";
+import RoadmapPage from "./pages/RoadmapPage";
+import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
+import CommunityPage from "./pages/CommunityPage";
 import RatingModal from "./components/RatingModal";
 import Modal from "./components/Modal";
 import ScheduleSessionModal from "./components/ScheduleSessionModal";
 import LiveSessionPage from "./pages/LiveSessionPage";
-import LoadingScreen from "./components/LoadingScreen";
+import ScrollToTop from "./components/ScrollToTop";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import CookiePolicyPage from "./pages/CookiePolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
+
 import EditProfileModal from "./components/EditProfileModal";
 import Dock from "./components/Dock";
 import {
@@ -117,6 +132,127 @@ const Layout = ({
   );
 };
 
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+  };
+  props: any;
+
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  public render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-50 dark:bg-slate-950">
+          <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-10 h-10"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold mb-4 text-slate-900 dark:text-white">
+            Something went wrong
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
+            The application encountered an unexpected error. We've logged the
+            details and are looking into it.
+          </p>
+          <button
+            onClick={() => (window.location.href = "/")}
+            className="px-8 py-3 bg-sky-500 text-white rounded-full font-bold shadow-lg shadow-sky-500/25 active:scale-95 transition-all"
+          >
+            Back to Home
+          </button>
+          {import.meta.env.DEV && (
+            <div className="mt-12 p-4 bg-slate-100 dark:bg-slate-900 rounded-xl text-left font-mono text-xs max-w-2xl overflow-auto border border-border">
+              <p className="text-rose-500 font-bold mb-2">
+                {this.state.error?.name}: {this.state.error?.message}
+              </p>
+              <pre className="text-slate-500">{this.state.error?.stack}</pre>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (this.props as any).children;
+  }
+}
+
+// Global Nav Wrapper component defined outside to prevent remounts
+interface NavigationWrapperProps {
+  children: (navProps: {
+    startChatWithNav: (user: User) => void;
+    startLiveSessionWithNav: (session: Session) => void;
+    viewProfileWithNav: (user: User) => void;
+    navigate: ReturnType<typeof useNavigate>;
+  }) => React.ReactNode;
+  setActiveChatPartner: (u: User | null) => void;
+  setActiveSession: (s: Session | null) => void;
+  setViewingProfile: (u: User | null) => void;
+}
+
+const NavigationWrapper: React.FC<NavigationWrapperProps> = ({
+  children,
+  setActiveChatPartner,
+  setActiveSession,
+  setViewingProfile,
+}) => {
+  const navigate = useNavigate();
+
+  const startChatWithNav = (user: User) => {
+    setActiveChatPartner(user);
+    navigate("/chat");
+  };
+
+  const startLiveSessionWithNav = (session: Session) => {
+    setActiveSession(session);
+    navigate(`/session/${session.id}`);
+  };
+
+  const viewProfileWithNav = (user: User) => {
+    setViewingProfile(user);
+    navigate(`/user/${user.id}`);
+  };
+
+  return children({
+    startChatWithNav,
+    startLiveSessionWithNav,
+    viewProfileWithNav,
+    navigate,
+  }) as React.ReactElement;
+};
+
 const App: React.FC = () => {
   const {
     currentUser,
@@ -128,8 +264,6 @@ const App: React.FC = () => {
     logout,
     updateUser,
   } = React.useContext(AuthContext);
-
-  const [hasStarted, setHasStarted] = useState(false);
 
   // State relevant to specific pages - simpler to keep here for this refactor than moving all to context or pages
   const [viewingProfile, setViewingProfile] = useState<User | null>(null);
@@ -546,9 +680,6 @@ const App: React.FC = () => {
       messageType: "text",
     };
     ws.current.send(JSON.stringify(payload));
-
-    // Optimistic update (optional, but we get echo back from server anyway)
-    // We'll rely on the server echo for now to ensure consistency
   };
 
   const handleProposeSession = async (
@@ -596,26 +727,18 @@ const App: React.FC = () => {
         // Notify via WebSocket
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           const payload = {
-            receiverId: updatedSession.proposerId, // Notify the person who proposed
+            receiverId:
+              updatedSession.studentId === currentUser?.id
+                ? updatedSession.teacherId
+                : updatedSession.studentId,
             text: `Accepted session request!`,
-            messageType: "text", // Simple text for now, or could be 'session_update'
-            session: updatedSession,
-          };
-          ws.current.send(JSON.stringify(payload));
-        }
-      } else {
-        const updatedSession = await api.put(`/sessions/${sessionId}/decline`);
-
-        // Notify via WebSocket
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          const payload = {
-            receiverId: updatedSession.studentId, // Notify the student (proposer)
-            text: `Declined session request.`,
             messageType: "text",
             session: updatedSession,
           };
           ws.current.send(JSON.stringify(payload));
         }
+      } else {
+        await api.put(`/sessions/${sessionId}/decline`);
       }
       fetchData();
     } catch (error) {
@@ -626,14 +749,12 @@ const App: React.FC = () => {
   const handleCompleteSession = async (sessionId: string) => {
     try {
       await api.put(`/sessions/${sessionId}/complete`);
-      // Refresh current user to update token count
       const meRes = await api.get("/users/me");
       if (meRes) {
         updateUser({ ...meRes, id: meRes._id || meRes.id });
       }
       fetchData();
 
-      // Open rating modal if we have the session object locally
       const justCompletedSession = sessions.find((s) => s.id === sessionId);
       if (justCompletedSession) {
         setSessionToRate(justCompletedSession);
@@ -642,19 +763,6 @@ const App: React.FC = () => {
       console.error("Failed to complete session", error);
     }
   };
-
-  const startLiveSession = (session: Session) => {
-    setActiveSession(session);
-    // Note: We need to navigate to live session route, handling below
-  };
-
-  const endLiveSession = () => {
-    setActiveSession(null);
-    // Note: navigate to dashboard
-  };
-
-  // Auth Wrappers using Context
-  // We can define handlers that just call context functions and then redirect
 
   const handleGoogleLogin = async () => {
     try {
@@ -671,7 +779,7 @@ const App: React.FC = () => {
     try {
       await loginWithEmail(emailOrUsername, password);
     } catch (error) {
-      console.error("Login Failed:", error);
+      console.error("Login Error:", error);
     }
   };
 
@@ -685,11 +793,6 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Signup Failed:", error);
     }
-  };
-
-  const startChat = (user: User) => {
-    setActiveChatPartner(user);
-    // We will need navigation to chat
   };
 
   const handleMarkAsRead = async (partnerId: string) => {
@@ -795,284 +898,498 @@ const App: React.FC = () => {
     },
   ];
 
-  if (!hasStarted && !currentUser && !authLoading) {
-    return <LandingPage onGetStarted={() => setHasStarted(true)} />;
-  }
-
-  // Show landing page if not started, or if we're still determining auth but want SEO visibility
-  if (!hasStarted && !currentUser) {
-    return <LandingPage onGetStarted={() => setHasStarted(true)} />;
-  }
-
-  if (!currentUser) {
-    return (
-      <LoginPage
-        onGoogleLogin={handleGoogleLogin}
-        onEmailLogin={handleEmailLogin}
-        onSignup={handleEmailSignup}
-      />
-    );
-  }
-
-  // Wrappers for navigation actions
-  const NavigationWrapper = ({ children }: any) => {
-    const navigate = useNavigate();
-
-    // This effect handles the "event" based navigation from the internal logic functions
-    // Ideally we would rewrite startChat etc to use navigate(), but passing navigate to them is hard inside the component body without heavy rewrites.
-    // Instead, we can redefine them here or just let the pages use `Link` where possible.
-    // For `startChat` which is used in MatchesPage, we pass a wrapper.
-
-    const startChatWithNav = (user: User) => {
-      setActiveChatPartner(user);
-      navigate("/chat");
-    };
-
-    const startLiveSessionWithNav = (session: Session) => {
-      setActiveSession(session);
-      navigate(`/session/${session.id}`);
-    };
-
-    const viewProfileWithNav = (user: User) => {
-      setViewingProfile(user);
-      navigate(`/user/${user.id}`);
-    };
-
-    return children({
-      startChatWithNav,
-      startLiveSessionWithNav,
-      viewProfileWithNav,
-      navigate,
-    });
-  };
-
   return (
     <Router>
-      <NavigationWrapper>
-        {({
-          startChatWithNav,
-          startLiveSessionWithNav,
-          viewProfileWithNav,
-          navigate,
-        }: any) => (
-          <div className="w-full min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
-            <Routes>
-              {/* Live Session Route (no header/dock usually, or simplified) */}
-              <Route
-                path="/session/:sessionId"
-                element={
-                  activeSession ? (
-                    <LiveSessionPage
-                      session={activeSession}
-                      currentUser={currentUser}
-                      otherUser={
-                        allUsers.find(
-                          (u) =>
-                            u.id ===
-                            (activeSession.studentId === currentUser.id
-                              ? activeSession.teacherId
-                              : activeSession.studentId),
-                        )!
-                      }
-                      onEndSession={async () => {
-                        await handleCompleteSession(activeSession.id);
-                        setActiveSession(null);
-                        navigate("/");
-                      }}
-                    />
-                  ) : (
-                    <Navigate to="/" />
-                  )
-                }
-              />
-
-              {/* All other pages with Layout */}
-              <Route
-                path="*"
-                element={
-                  <Layout
-                    currentUser={currentUser}
-                    isAdmin={isAdmin}
-                    logout={logout}
-                    theme={theme}
-                    toggleTheme={toggleTheme}
-                    navItems={isAdmin ? adminNavItems : userNavItems}
-                  >
-                    <Routes>
-                      <Route
-                        path="/"
-                        element={
-                          isAdmin ? (
-                            <Navigate to="/admin" replace />
-                          ) : (
-                            <DashboardPage
-                              sessions={sessions}
-                              ratings={ratings}
-                              users={allUsers.filter((u) => !u.isAdmin)}
-                              openRatingModal={handleOpenRatingModal}
-                              completeSession={handleCompleteSession}
-                              startLiveSession={startLiveSessionWithNav}
-                              currentUser={currentUser!}
-                              sendConnectionRequest={sendConnectionRequest}
-                              connectionRequests={connectionRequests}
-                              startChat={startChatWithNav}
-                              onCategorySelect={(cat) => {
-                                setCategoryFilter(cat);
-                                navigate("/matches");
-                              }}
-                            />
-                          )
-                        }
-                      />
-
-                      <Route
-                        path="/matches"
-                        element={
-                          <MatchesPage
-                            currentUser={currentUser!}
-                            users={allUsers.filter(
-                              (u) => u.id !== currentUser?.id && !u.isAdmin,
-                            )}
-                            allUsers={allUsers} // Pass full list for lookups
-                            startChat={startChatWithNav}
-                            connectionRequests={connectionRequests}
-                            sendConnectionRequest={sendConnectionRequest}
-                            categoryFilter={categoryFilter}
-                            setCategoryFilter={setCategoryFilter}
-                            handleRequest={handleConnectionRequest}
-                          />
-                        }
-                      />
-
-                      <Route
-                        path="/notifications"
-                        element={
-                          <NotificationsPage
-                            requests={connectionRequests}
-                            handleRequest={handleConnectionRequest}
-                            cancelRequest={cancelConnectionRequest}
-                            users={allUsers}
-                            currentUserId={currentUser!.id}
-                            viewUserProfile={viewProfileWithNav}
-                          />
-                        }
-                      />
-
-                      <Route
-                        path="/chat"
-                        element={
-                          <ChatPage
-                            currentUser={currentUser!}
-                            allUsers={allUsers}
-                            activeChatPartner={activeChatPartner}
-                            setActiveChatPartner={setActiveChatPartner}
-                            messages={messages}
+      <ScrollToTop />
+      <ErrorBoundary>
+        <div className="w-full min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
+          <NavigationWrapper
+            setActiveChatPartner={setActiveChatPartner}
+            setActiveSession={setActiveSession}
+            setViewingProfile={setViewingProfile}
+          >
+            {(navProps: any) => (
+              <Routes>
+                {/* Public Marketing Routes */}
+                <Route
+                  path="/"
+                  element={
+                    currentUser ? (
+                      isAdmin ? (
+                        <Navigate to="/admin" replace />
+                      ) : (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={userNavItems}
+                        >
+                          <DashboardPage
                             sessions={sessions}
-                            sendMessage={handleSendMessage}
-                            openSchedulingModal={() => setIsScheduling(true)}
-                            handleSessionResponse={handleSessionResponse}
-                            markAsRead={handleMarkAsRead}
-                            clearChat={handleClearChat}
-                            setCurrentPage={(page) => {
-                              // Backward compatibility if ChatPage tries to nav
-                              if (page === "dashboard") navigate("/");
+                            ratings={ratings}
+                            users={allUsers.filter((u) => !u.isAdmin)}
+                            openRatingModal={handleOpenRatingModal}
+                            completeSession={handleCompleteSession}
+                            startLiveSession={navProps.startLiveSessionWithNav}
+                            currentUser={currentUser}
+                            sendConnectionRequest={sendConnectionRequest}
+                            connectionRequests={connectionRequests}
+                            startChat={navProps.startChatWithNav}
+                            onCategorySelect={(cat) => {
+                              setCategoryFilter(cat);
+                              navProps.navigate("/matches");
                             }}
-                            onOpenCoach={() => navigate("/coach")}
                           />
-                        }
+                        </Layout>
+                      )
+                    ) : (
+                      <LandingPage
+                        onGetStarted={() => navProps.navigate("/login")}
                       />
+                    )
+                  }
+                />
+                <Route
+                  path="/roadmap"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <RoadmapPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/blog"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <BlogPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/blog/:slug"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <BlogPostPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/community"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <CommunityPage />
+                    </Layout>
+                  }
+                />
 
-                      <Route path="/coach" element={<CoachPage />} />
+                <Route
+                  path="/login"
+                  element={
+                    currentUser ? (
+                      <Navigate to="/" replace />
+                    ) : (
+                      <LoginPage
+                        onGoogleLogin={handleGoogleLogin}
+                        onEmailLogin={handleEmailLogin}
+                        onSignup={handleEmailSignup}
+                      />
+                    )
+                  }
+                />
 
-                      <Route
-                        path="/profile"
-                        element={
-                          <ProfilePage
+                {/* Protected Application Routes */}
+                <Route
+                  path="/matches"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        <MatchesPage
+                          currentUser={currentUser}
+                          users={allUsers.filter(
+                            (u) => u.id !== currentUser.id && !u.isAdmin,
+                          )}
+                          allUsers={allUsers}
+                          startChat={navProps.startChatWithNav}
+                          connectionRequests={connectionRequests}
+                          sendConnectionRequest={sendConnectionRequest}
+                          categoryFilter={categoryFilter}
+                          setCategoryFilter={setCategoryFilter}
+                          handleRequest={handleConnectionRequest}
+                        />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/notifications"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        <NotificationsPage
+                          requests={connectionRequests}
+                          handleRequest={handleConnectionRequest}
+                          cancelRequest={cancelConnectionRequest}
+                          users={allUsers}
+                          currentUserId={currentUser.id}
+                          viewUserProfile={navProps.viewProfileWithNav}
+                        />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/chat"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        <ChatPage
+                          currentUser={currentUser}
+                          allUsers={allUsers}
+                          activeChatPartner={activeChatPartner}
+                          setActiveChatPartner={setActiveChatPartner}
+                          messages={messages}
+                          sessions={sessions}
+                          sendMessage={handleSendMessage}
+                          openSchedulingModal={() => setIsScheduling(true)}
+                          handleSessionResponse={handleSessionResponse}
+                          markAsRead={handleMarkAsRead}
+                          clearChat={handleClearChat}
+                          setCurrentPage={(page) => {
+                            if (page === "dashboard") navProps.navigate("/");
+                          }}
+                          onOpenCoach={() => navProps.navigate("/coach")}
+                        />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/session/:sessionId"
+                  element={
+                    currentUser ? (
+                      activeSession ? (
+                        <LiveSessionPage
+                          session={activeSession}
+                          currentUser={currentUser}
+                          otherUser={
+                            allUsers.find(
+                              (u) =>
+                                u.id ===
+                                (activeSession.studentId === currentUser.id
+                                  ? activeSession.teacherId
+                                  : activeSession.studentId),
+                            )!
+                          }
+                          onEndSession={async () => {
+                            await handleCompleteSession(activeSession.id);
+                            setActiveSession(null);
+                            navProps.navigate("/");
+                          }}
+                        />
+                      ) : (
+                        <Navigate to="/" />
+                      )
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/coach"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        <CoachPage />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/profile"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        <ProfilePage
+                          ratings={ratings}
+                          users={allUsers}
+                          tokenTransactions={tokenTransactions}
+                          allSkills={allSkills}
+                          addNewSkill={addNewSkill}
+                          openEditModal={() => setIsEditingProfile(true)}
+                        />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
+
+                <Route
+                  path="/user/:userId"
+                  element={
+                    currentUser ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={isAdmin ? adminNavItems : userNavItems}
+                      >
+                        {viewingProfile ? (
+                          <UserProfilePage
+                            user={viewingProfile}
+                            goBack={() => navProps.navigate(-1)}
                             ratings={ratings}
                             users={allUsers}
-                            tokenTransactions={tokenTransactions}
-                            allSkills={allSkills}
-                            addNewSkill={addNewSkill}
-                            openEditModal={() => setIsEditingProfile(true)}
                           />
-                        }
-                      />
+                        ) : (
+                          <Navigate to="/" />
+                        )}
+                      </Layout>
+                    ) : (
+                      <Navigate to="/login" replace />
+                    )
+                  }
+                />
 
-                      <Route
-                        path="/user/:userId"
-                        element={
-                          viewingProfile ? (
-                            <UserProfilePage
-                              user={viewingProfile}
-                              goBack={() => navigate(-1)}
-                              ratings={ratings}
-                              users={allUsers}
-                            />
-                          ) : (
-                            <Navigate to="/" />
-                          )
-                        }
-                      />
+                <Route
+                  path="/admin"
+                  element={
+                    currentUser && isAdmin ? (
+                      <Layout
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={adminNavItems}
+                      >
+                        <AdminDashboardPage />
+                      </Layout>
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  }
+                />
 
-                      <Route
-                        path="/admin"
-                        element={
-                          isAdmin ? <AdminDashboardPage /> : <Navigate to="/" />
-                        }
-                      />
-                    </Routes>
-                  </Layout>
-                }
-              />
-            </Routes>
+                <Route
+                  path="/privacy-policy"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <PrivacyPolicyPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/cookie-policy"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <CookiePolicyPage />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/terms-of-service"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <TermsOfServicePage />
+                    </Layout>
+                  }
+                />
 
-            {/* Modals outside routes so they can overlay */}
-            {sessionToRate && targetUserForRating && (
-              <RatingModal
-                isOpen={!!sessionToRate}
-                onClose={handleCloseRatingModal}
-                session={sessionToRate}
-                targetUser={targetUserForRating}
-                onSubmit={handleSubmitRating}
-                // Custom placeholder based on role
-                placeholder={
-                  sessionToRate.teacherId === currentUser?.id
-                    ? `How was your experience teaching ${sessionToRate.skill.name} to ${targetUserForRating.name}?`
-                    : `How was your experience learning ${sessionToRate.skill.name} from ${targetUserForRating.name}?`
-                }
-                title={
-                  sessionToRate.teacherId === currentUser?.id
-                    ? `Rate your teaching session with ${targetUserForRating.name}`
-                    : `Rate your learning session with ${targetUserForRating.name}`
-                }
-              />
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             )}
+          </NavigationWrapper>
 
-            {isScheduling && activeChatPartner && (
-              <ScheduleSessionModal
-                isOpen={isScheduling}
-                onClose={() => setIsScheduling(false)}
-                currentUser={currentUser}
-                targetUser={activeChatPartner}
-                onSubmit={handleProposeSession}
-              />
-            )}
-            {isEditingProfile && currentUser && (
-              <EditProfileModal
-                isOpen={isEditingProfile}
-                onClose={() => setIsEditingProfile(false)}
-                user={currentUser}
-                onSave={async (updatedUser) => {
-                  await updateUser(updatedUser);
-                  setIsEditingProfile(false);
-                }}
-                allSkills={allSkills}
-                addNewSkill={addNewSkill}
-              />
-            )}
-          </div>
-        )}
-      </NavigationWrapper>
+          {sessionToRate && targetUserForRating && (
+            <RatingModal
+              isOpen={!!sessionToRate}
+              onClose={handleCloseRatingModal}
+              session={sessionToRate}
+              targetUser={targetUserForRating}
+              onSubmit={handleSubmitRating}
+              placeholder={
+                sessionToRate.teacherId === currentUser?.id
+                  ? `How was your experience teaching ${sessionToRate.skill.name} to ${targetUserForRating.name}?`
+                  : `How was your experience learning ${sessionToRate.skill.name} from ${targetUserForRating.name}?`
+              }
+              title={
+                sessionToRate.teacherId === currentUser?.id
+                  ? `Rate your teaching session with ${targetUserForRating.name}`
+                  : `Rate your learning session with ${targetUserForRating.name}`
+              }
+            />
+          )}
+
+          {isScheduling && activeChatPartner && (
+            <ScheduleSessionModal
+              isOpen={isScheduling}
+              onClose={() => setIsScheduling(false)}
+              currentUser={currentUser!}
+              targetUser={activeChatPartner}
+              onSubmit={handleProposeSession}
+            />
+          )}
+
+          {isEditingProfile && currentUser && (
+            <EditProfileModal
+              isOpen={isEditingProfile}
+              onClose={() => setIsEditingProfile(false)}
+              user={currentUser}
+              onSave={async (updatedUser) => {
+                await updateUser(updatedUser);
+                setIsEditingProfile(false);
+              }}
+              allSkills={allSkills}
+              addNewSkill={addNewSkill}
+            />
+          )}
+        </div>
+      </ErrorBoundary>
     </Router>
   );
 };
