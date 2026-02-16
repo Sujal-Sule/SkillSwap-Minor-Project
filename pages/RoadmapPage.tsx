@@ -187,7 +187,11 @@ const RoadmapPage: React.FC = () => {
             features would make your learning journey better.
           </p>
           <button className="px-8 py-3 bg-white text-slate-900 font-bold rounded-full hover:bg-sky-500 hover:text-white transition-all transform active:scale-95 shadow-xl shadow-white/5">
-            Submit Feedback
+            <a
+              href="mailto:sujalsule31@gmail.com?subject=SkillSwap%20Legal%20Inquiry"
+              className="hover:text-sky-500 transition-colors">
+              Submit Feedback
+            </a>
           </button>
         </motion.div>
       </div>

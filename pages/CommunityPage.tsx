@@ -10,6 +10,7 @@ const CommunityPage: React.FC = () => {
       icon: "💬",
       action: "Join Discord",
       color: "bg-[#5865F2]",
+      url: "#",
     },
     {
       title: "Contribute on GitHub",
@@ -18,6 +19,7 @@ const CommunityPage: React.FC = () => {
       icon: "💻",
       action: "View Repository",
       color: "bg-[#24292e]",
+      url: "https://github.com/Sujal-Sule/SkillSwap-Minor-Project",
     },
     {
       title: "Community Forum",
@@ -26,6 +28,7 @@ const CommunityPage: React.FC = () => {
       icon: "🏛️",
       action: "Browse Forum",
       color: "bg-sky-500",
+      url: "#",
     },
   ];
 
@@ -97,11 +100,14 @@ const CommunityPage: React.FC = () => {
               <p className="text-slate-600 dark:text-slate-400 mb-10 flex-grow leading-relaxed">
                 {link.description}
               </p>
-              <button
-                className={`w-full py-4 rounded-2xl text-white font-bold transition-all active:scale-95 shadow-lg ${link.color}`}
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-full py-4 rounded-2xl text-white font-bold transition-all active:scale-95 shadow-lg ${link.color} block text-center`}
               >
                 {link.action}
-              </button>
+              </a>
             </motion.div>
           ))}
         </section>
