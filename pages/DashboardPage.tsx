@@ -15,6 +15,7 @@ import {
   AcademicCapIcon,
   SparklesIcon,
   ClockIcon,
+  VideoCameraIcon,
   ChatBubbleLeftRightIcon,
 } from "../components/icons";
 
@@ -28,7 +29,7 @@ interface DashboardPageProps {
   currentUser: User;
   connectionRequests: ConnectionRequest[];
   sendConnectionRequest: (receiverId: string) => void;
-  startChat: (user: User) => void;
+  startChat: (user?: User | null) => void;
   onCategorySelect: (categoryId: string) => void;
 }
 
@@ -137,7 +138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
         <button
-          onClick={() => startChat && startChat(currentUser)}
+          onClick={() => startChat && startChat(null)}
           className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md"
         >
           Schedule Session
@@ -249,34 +250,119 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         </p>
       </div>
 
-      {/* Ready for Next Session Banner */}
-      <div className="bg-surface p-10 rounded-3xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
-        <div className="relative z-10 max-w-xl">
-          <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-3">
-            Ready for your next session?
-          </h2>
-          <p className="text-text-muted mb-8 text-lg">
-            Connect with an expert mentor to accelerate your learning and
-            growth.
-          </p>
-          <div className="flex gap-4">
-            <button
-              onClick={() => onCategorySelect("")}
-              className="px-8 py-3 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 transition-colors shadow-lg shadow-sky-500/30"
-            >
-              Find a Mentor
-            </button>
+      {/* Dynamic Session Banner */}
+      {upcomingSessions.length > 0 ? (
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 dark:from-indigo-900 dark:to-purple-900 p-8 md:p-10 rounded-3xl border border-indigo-500/30 shadow-lg shadow-indigo-500/20 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group text-white">
+          <div className="relative z-10 max-w-2xl w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider border border-white/10">
+                Upcoming Session
+              </span>
+              <div className="flex items-center gap-1.5 text-indigo-100 text-sm font-medium">
+                <ClockIcon className="w-4 h-4" />
+                {new Date(upcomingSessions[0].scheduledTime).toLocaleString(
+                  undefined,
+                  {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                )}
+              </div>
+            </div>
+
+            <h2 className="text-3xl md:text-4xl font-bold mb-2">
+              {upcomingSessions[0].skill.name}
+            </h2>
+
+            <div className="flex items-center gap-4 mb-8">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center border border-white/20">
+                  <span className="font-bold text-sm">
+                    {upcomingSessions[0].studentId === currentUser.id
+                      ? getUser(upcomingSessions[0].teacherId)?.name.charAt(0)
+                      : getUser(upcomingSessions[0].studentId)?.name.charAt(0)}
+                  </span>
+                </div>
+                <span className="text-lg text-indigo-100">
+                  with{" "}
+                  {upcomingSessions[0].studentId === currentUser.id
+                    ? getUser(upcomingSessions[0].teacherId)?.name
+                    : getUser(upcomingSessions[0].studentId)?.name}
+                </span>
+              </div>
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+              <span className="text-indigo-200">
+                {upcomingSessions[0].duration} min session
+              </span>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => startLiveSession(upcomingSessions[0])}
+                disabled={getSessionAccessState(upcomingSessions[0]).locked}
+                className="px-8 py-3.5 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <VideoCameraIcon className="w-5 h-5" />
+                {getSessionAccessState(upcomingSessions[0]).message}
+              </button>
+              {getSessionAccessState(upcomingSessions[0]).locked && (
+                <div className="px-4 py-3.5 text-indigo-200 text-sm font-medium flex items-center">
+                  Starts in{" "}
+                  {Math.round(
+                    (new Date(upcomingSessions[0].scheduledTime).getTime() -
+                      new Date().getTime()) /
+                      (1000 * 60),
+                  )}{" "}
+                  mins
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Illustration Area */}
-        <div className="relative z-10 w-full md:w-auto flex justify-center md:mr-10">
-          <MentorshipIllustration className="w-64 h-auto drop-shadow-xl" />
-        </div>
+          <div className="relative z-10 hidden md:block">
+            <div className="w-32 h-32 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center relative">
+              <div className="absolute inset-0 rounded-full border border-white/20 animate-[ping_3s_ease-in-out_infinite]" />
+              <div className="absolute inset-2 rounded-full border border-white/40 animate-[spin_10s_linear_infinite]" />
+              <SparklesIcon className="w-12 h-12 text-white/80" />
+            </div>
+          </div>
 
-        {/* Decorative Background Elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-500/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-      </div>
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
+        </div>
+      ) : (
+        <div className="bg-surface p-10 rounded-3xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
+          <div className="relative z-10 max-w-xl">
+            <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-3">
+              Ready for your next session?
+            </h2>
+            <p className="text-text-muted mb-8 text-lg">
+              Connect with an expert mentor to accelerate your learning and
+              growth.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => onCategorySelect("")}
+                className="px-8 py-3 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 transition-colors shadow-lg shadow-sky-500/30"
+              >
+                Find a Mentor
+              </button>
+            </div>
+          </div>
+
+          {/* Illustration Area */}
+          <div className="relative z-10 w-full md:w-auto flex justify-center md:mr-10">
+            <MentorshipIllustration className="w-64 h-auto drop-shadow-xl" />
+          </div>
+
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-500/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+        </div>
+      )}
 
       {/* Activity Feed */}
       <ActivityFeed

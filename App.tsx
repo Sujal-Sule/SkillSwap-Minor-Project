@@ -80,7 +80,16 @@ import {
 
 const parseAsUTC = (dateString: string) => {
   if (!dateString) return new Date();
-  return new Date(dateString.endsWith("Z") ? dateString : dateString + "Z");
+  // If explicitly UTC or has timezone offset, parse as is
+  if (
+    dateString.endsWith("Z") ||
+    /[\+\-]\d{2}:\d{2}$/.test(dateString) ||
+    /[\+\-]\d{4}$/.test(dateString)
+  ) {
+    return new Date(dateString);
+  }
+  // Otherwise assume UTC and append Z
+  return new Date(dateString + "Z");
 };
 
 const Layout = ({
@@ -212,7 +221,7 @@ class ErrorBoundary extends React.Component<
 // Global Nav Wrapper component defined outside to prevent remounts
 interface NavigationWrapperProps {
   children: (navProps: {
-    startChatWithNav: (user: User) => void;
+    startChatWithNav: (user?: User | null) => void;
     startLiveSessionWithNav: (session: Session) => void;
     viewProfileWithNav: (user: User) => void;
     navigate: ReturnType<typeof useNavigate>;
@@ -230,8 +239,8 @@ const NavigationWrapper: React.FC<NavigationWrapperProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const startChatWithNav = (user: User) => {
-    setActiveChatPartner(user);
+  const startChatWithNav = (user?: User | null) => {
+    setActiveChatPartner(user || null);
     navigate("/chat");
   };
 
