@@ -40,6 +40,7 @@ import RoadmapPage from "./pages/RoadmapPage";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
 import CommunityPage from "./pages/CommunityPage";
+import ForumPage from "./pages/ForumPage";
 import RatingModal from "./components/RatingModal";
 import Modal from "./components/Modal";
 import ScheduleSessionModal from "./components/ScheduleSessionModal";
@@ -1344,6 +1345,28 @@ const App: React.FC = () => {
                       }
                     >
                       <TermsOfServicePage />
+                    </Layout>
+                  }
+                />
+
+                <Route
+                  path="/forum"
+                  element={
+                    <Layout
+                      currentUser={currentUser || undefined}
+                      isAdmin={isAdmin}
+                      logout={logout}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      navItems={
+                        currentUser
+                          ? isAdmin
+                            ? adminNavItems
+                            : userNavItems
+                          : []
+                      }
+                    >
+                      <ForumPage />
                     </Layout>
                   }
                 />

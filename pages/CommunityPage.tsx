@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 const CommunityPage: React.FC = () => {
   const socialLinks = [
@@ -28,7 +29,7 @@ const CommunityPage: React.FC = () => {
       icon: "🏛️",
       action: "Browse Forum",
       color: "bg-sky-500",
-      url: "#",
+      url: "/forum",
     },
   ];
 
@@ -100,14 +101,23 @@ const CommunityPage: React.FC = () => {
               <p className="text-slate-600 dark:text-slate-400 mb-10 flex-grow leading-relaxed">
                 {link.description}
               </p>
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`w-full py-4 rounded-2xl text-white font-bold transition-all active:scale-95 shadow-lg ${link.color} block text-center`}
-              >
-                {link.action}
-              </a>
+              {link.url.startsWith("/") ? (
+                <Link
+                  to={link.url}
+                  className={`w-full py-4 rounded-2xl text-white font-bold transition-all active:scale-95 shadow-lg ${link.color} block text-center`}
+                >
+                  {link.action}
+                </Link>
+              ) : (
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`w-full py-4 rounded-2xl text-white font-bold transition-all active:scale-95 shadow-lg ${link.color} block text-center`}
+                >
+                  {link.action}
+                </a>
+              )}
             </motion.div>
           ))}
         </section>
