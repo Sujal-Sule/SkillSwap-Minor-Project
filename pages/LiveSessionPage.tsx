@@ -239,28 +239,29 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           const quality = calcNetworkQuality(currentRtt, currentPacketLoss);
           setNetworkQuality(quality);
 
-          // Auto-adjust resolution based on quality
-          if (quality === 1 && !isScreenSharing) {
-            // Poor quality → downscale
+          // Auto-adjust resolution based on quality — aggressive 3-tier
+          if (!isScreenSharing) {
             const senders = pc.getSenders();
             const videoSender = senders.find((s) => s.track?.kind === "video");
             if (videoSender) {
               const params = videoSender.getParameters();
               if (params.encodings?.[0]) {
-                params.encodings[0].scaleResolutionDownBy = 2.0;
-                params.encodings[0].maxBitrate = 200000;
-                videoSender.setParameters(params).catch(() => {});
-              }
-            }
-          } else if (quality === 3 && !isScreenSharing) {
-            // Good quality → restore
-            const senders = pc.getSenders();
-            const videoSender = senders.find((s) => s.track?.kind === "video");
-            if (videoSender) {
-              const params = videoSender.getParameters();
-              if (params.encodings?.[0]) {
-                params.encodings[0].scaleResolutionDownBy = 1.0;
-                params.encodings[0].maxBitrate = 400000;
+                if (quality === 1) {
+                  // POOR: extreme downscale, near-audio-only
+                  params.encodings[0].scaleResolutionDownBy = 4.0;
+                  params.encodings[0].maxBitrate = 50000; // 50kbps
+                  params.encodings[0].maxFramerate = 8;
+                } else if (quality === 2) {
+                  // FAIR: moderate downscale
+                  params.encodings[0].scaleResolutionDownBy = 2.0;
+                  params.encodings[0].maxBitrate = 120000; // 120kbps
+                  params.encodings[0].maxFramerate = 15;
+                } else if (quality === 3) {
+                  // GOOD: full quality
+                  params.encodings[0].scaleResolutionDownBy = 1.0;
+                  params.encodings[0].maxBitrate = 300000;
+                  delete (params.encodings[0] as any).maxFramerate;
+                }
                 videoSender.setParameters(params).catch(() => {});
               }
             }
@@ -329,18 +330,38 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
     const setupMediaAndConnection = async () => {
       try {
-        // 1. Get User Media with Bandwidth Constraints (480p, 24fps)
+        // 1. Detect connection type for adaptive constraints
+        const nav = navigator as any;
+        const conn =
+          nav.connection || nav.mozConnection || nav.webkitConnection;
+        const isSlow =
+          conn &&
+          (conn.effectiveType === "2g" ||
+            conn.effectiveType === "3g" ||
+            conn.downlink < 2);
+        const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+        const useLowBandwidth = isSlow || isMobile;
+
+        // Low-bandwidth: 320x240 @ 15fps | Normal: 480x360 @ 20fps
         const constraints: MediaStreamConstraints = {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-          },
-          video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 24, max: 30 },
-          },
+            channelCount: 1, // Mono audio saves bandwidth
+            sampleRate: 16000, // 16kHz is plenty for voice
+          } as any,
+          video: useLowBandwidth
+            ? {
+                width: { ideal: 320, max: 480 },
+                height: { ideal: 240, max: 360 },
+                frameRate: { ideal: 15, max: 20 },
+              }
+            : {
+                width: { ideal: 480, max: 640 },
+                height: { ideal: 360, max: 480 },
+                frameRate: { ideal: 20, max: 24 },
+              },
         };
 
         console.log("Requesting media with constraints:", constraints);
@@ -373,10 +394,12 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           console.warn("Failed to fetch TURN credentials, using STUN only", e);
         }
 
-        // 3. Init PeerConnection with TURN support
+        // 3. Init PeerConnection with TURN support + bandwidth policy
         const pc = new RTCPeerConnection({
           iceServers,
-          iceCandidatePoolSize: 4,
+          iceCandidatePoolSize: 2, // Smaller pool = faster initial connection
+          bundlePolicy: "max-bundle", // Multiplex audio+video on one transport (less overhead)
+          rtcpMuxPolicy: "require", // Reduce port usage
         });
         peerConnection.current = pc;
 
@@ -390,46 +413,82 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           setupDataChannel(event.channel);
         };
 
-        // 5. Add Tracks with Simulcast (3-layer encoding for adaptive quality)
+        // 5. Add Tracks — prioritize audio, cap video bandwidth
         const audioTrack = stream.getAudioTracks()[0];
         const videoTrack = stream.getVideoTracks()[0];
 
+        // Add audio FIRST so it gets priority in bandwidth allocation
         if (audioTrack) {
-          pc.addTrack(audioTrack, stream);
+          const audioSender = pc.addTrack(audioTrack, stream);
+          // Cap audio bitrate to 24kbps Opus mono (clear voice, minimal data)
+          try {
+            const audioParams = audioSender.getParameters();
+            if (!audioParams.encodings || audioParams.encodings.length === 0) {
+              audioParams.encodings = [{}];
+            }
+            audioParams.encodings[0].maxBitrate = 24000; // 24kbps Opus
+            (audioParams.encodings[0] as any).networkPriority = "high"; // Prioritize audio
+            (audioParams.encodings[0] as any).priority = "high";
+            await audioSender.setParameters(audioParams);
+          } catch (e) {
+            console.warn("Audio encoding setup fallback", e);
+          }
         }
 
         if (videoTrack) {
-          // Use addTransceiver for simulcast support
-          const transceiver = pc.addTransceiver(videoTrack, {
-            direction: "sendrecv",
-            streams: [stream],
-            sendEncodings: [
-              { rid: "high", maxBitrate: 400000, scaleResolutionDownBy: 1.0 },
-              { rid: "mid", maxBitrate: 150000, scaleResolutionDownBy: 2.0 },
-              { rid: "low", maxBitrate: 50000, scaleResolutionDownBy: 4.0 },
-            ],
-          });
+          // On slow connections: single layer, low bitrate
+          // On good connections: simulcast 2 layers (not 3 — saves CPU)
+          const videoBitrate = useLowBandwidth ? 150000 : 300000; // 150kbps or 300kbps
 
-          // Fallback: if simulcast parameters fail (some browsers), set simple bitrate
-          try {
-            const sender = transceiver.sender;
-            const params = sender.getParameters();
-            if (!params.encodings || params.encodings.length === 0) {
-              params.encodings = [{}];
+          if (useLowBandwidth) {
+            // Single encoding — no simulcast overhead on mobile
+            const videoSender = pc.addTrack(videoTrack, stream);
+            try {
+              const params = videoSender.getParameters();
+              if (!params.encodings || params.encodings.length === 0) {
+                params.encodings = [{}];
+              }
+              params.encodings[0].maxBitrate = videoBitrate;
+              params.encodings[0].maxFramerate = 15;
+              (params.encodings[0] as any).networkPriority = "low"; // Audio takes priority
+              (params.encodings[0] as any).priority = "low";
+              await videoSender.setParameters(params);
+            } catch (e) {
+              console.warn("Video encoding setup fallback", e);
             }
-            // Ensure at least the primary encoding has a cap
-            if (params.encodings.length === 1) {
-              params.encodings[0].maxBitrate = 400000;
+          } else {
+            // Simulcast with 2 layers for desktop/good connections
+            const transceiver = pc.addTransceiver(videoTrack, {
+              direction: "sendrecv",
+              streams: [stream],
+              sendEncodings: [
+                { rid: "high", maxBitrate: 300000, scaleResolutionDownBy: 1.0 },
+                { rid: "low", maxBitrate: 80000, scaleResolutionDownBy: 2.0 },
+              ],
+            });
+            try {
+              const sender = transceiver.sender;
+              const params = sender.getParameters();
+              if (!params.encodings || params.encodings.length === 0) {
+                params.encodings = [{}];
+              }
+              if (params.encodings.length === 1) {
+                params.encodings[0].maxBitrate = 300000;
+              }
+              await sender.setParameters(params);
+              console.log(
+                "Video encoding configured:",
+                params.encodings.length,
+                "layers",
+              );
+            } catch (e) {
+              console.warn("Simulcast setup failed, using default encoding", e);
             }
-            await sender.setParameters(params);
-            console.log(
-              "Video encoding configured:",
-              params.encodings.length,
-              "layers",
-            );
-          } catch (e) {
-            console.warn("Simulcast setup failed, using default encoding", e);
           }
+
+          console.log(
+            `Mode: ${useLowBandwidth ? "LOW-BANDWIDTH" : "NORMAL"}, videoBitrate: ${videoBitrate / 1000}kbps`,
+          );
         }
 
         // 6. Handle Remote Tracks
@@ -804,7 +863,10 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           // Only re-acquire VIDEO, keep existing audio
           console.log("Camera track ended. Re-acquiring video only...");
           const newStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
+            video: {
+              width: { ideal: 320, max: 480 },
+              height: { ideal: 240, max: 360 },
+            },
             audio: false, // Keep existing audio track
           });
           camTrack = newStream.getVideoTracks()[0];
@@ -830,10 +892,11 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
         if (videoSender) {
           await videoSender.replaceTrack(camTrack);
-          // Restore camera bitrate (400kbps)
+          // Restore camera bitrate (200kbps for mobile-friendly)
           const params = videoSender.getParameters();
           if (params.encodings?.[0]) {
-            params.encodings[0].maxBitrate = 400000;
+            params.encodings[0].maxBitrate = 200000;
+            params.encodings[0].maxFramerate = 20;
           }
           await videoSender.setParameters(params).catch(() => {});
         }
@@ -862,12 +925,13 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
         if (videoSender) {
           await videoSender.replaceTrack(screenTrack);
-          // Higher bitrate for screen share (1.5 Mbps)
+          // Screen share bitrate (800kbps — mobile-friendly for text readability)
           const params = videoSender.getParameters();
           if (params.encodings?.[0]) {
-            params.encodings[0].maxBitrate = 1500000;
+            params.encodings[0].maxBitrate = 800000;
             // Disable downscaling for screen share (text clarity)
             params.encodings[0].scaleResolutionDownBy = 1.0;
+            params.encodings[0].maxFramerate = 10; // Low FPS fine for screen content
           }
           await videoSender.setParameters(params).catch(() => {});
         }
@@ -891,7 +955,10 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
             if (!camTrack || camTrack.readyState === "ended") {
               const newStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                video: {
+                  width: { ideal: 320, max: 480 },
+                  height: { ideal: 240, max: 360 },
+                },
                 audio: false,
               });
               camTrack = newStream.getVideoTracks()[0];
@@ -917,7 +984,8 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
               // Restore camera bitrate
               const params = videoSender.getParameters();
               if (params.encodings?.[0]) {
-                params.encodings[0].maxBitrate = 400000;
+                params.encodings[0].maxBitrate = 200000;
+                params.encodings[0].maxFramerate = 20;
               }
               await videoSender.setParameters(params).catch(() => {});
             }
