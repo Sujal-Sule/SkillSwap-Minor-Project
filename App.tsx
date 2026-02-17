@@ -2,9 +2,10 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useMemo,
+  useCallback,
   Component,
-  ReactNode,
-  ErrorInfo,
+  Suspense,
 } from "react";
 import type {
   User,
@@ -25,31 +26,38 @@ import {
   tokenTransactions as initialTokenTransactions,
   skills as initialSkills,
 } from "./data/mockData";
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
+
+// --- Lazy-loaded Pages (code splitting — each page is a separate chunk) ---
+const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const DashboardPage = React.lazy(() => import("./pages/DashboardPage"));
+const MatchesPage = React.lazy(() => import("./pages/MatchesPage"));
+const ChatPage = React.lazy(() => import("./pages/ChatPage"));
+const ProfilePage = React.lazy(() => import("./pages/ProfilePage"));
+const CoachPage = React.lazy(() => import("./pages/CoachPage"));
+const AdminDashboardPage = React.lazy(
+  () => import("./pages/AdminDashboardPage"),
+);
+const NotificationsPage = React.lazy(() => import("./pages/NotificationsPage"));
+const UserProfilePage = React.lazy(() => import("./pages/UserProfilePage"));
+const RoadmapPage = React.lazy(() => import("./pages/RoadmapPage"));
+const BlogPage = React.lazy(() => import("./pages/BlogPage"));
+const BlogPostPage = React.lazy(() => import("./pages/BlogPostPage"));
+const CommunityPage = React.lazy(() => import("./pages/CommunityPage"));
+const ForumPage = React.lazy(() => import("./pages/ForumPage"));
+const LiveSessionPage = React.lazy(() => import("./pages/LiveSessionPage"));
+const PrivacyPolicyPage = React.lazy(() => import("./pages/PrivacyPolicyPage"));
+const CookiePolicyPage = React.lazy(() => import("./pages/CookiePolicyPage"));
+const TermsOfServicePage = React.lazy(
+  () => import("./pages/TermsOfServicePage"),
+);
+
+// --- Eagerly-loaded components (needed on every page or immediately) ---
 import Header from "./components/Header";
-import DashboardPage from "./pages/DashboardPage";
-import MatchesPage from "./pages/MatchesPage";
-import ChatPage from "./pages/ChatPage";
-import ProfilePage from "./pages/ProfilePage";
-import CoachPage from "./pages/CoachPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import NotificationsPage from "./pages/NotificationsPage";
-import UserProfilePage from "./pages/UserProfilePage";
-import RoadmapPage from "./pages/RoadmapPage";
-import BlogPage from "./pages/BlogPage";
-import BlogPostPage from "./pages/BlogPostPage";
-import CommunityPage from "./pages/CommunityPage";
-import ForumPage from "./pages/ForumPage";
 import RatingModal from "./components/RatingModal";
 import Modal from "./components/Modal";
 import ScheduleSessionModal from "./components/ScheduleSessionModal";
-import LiveSessionPage from "./pages/LiveSessionPage";
 import ScrollToTop from "./components/ScrollToTop";
-import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import CookiePolicyPage from "./pages/CookiePolicyPage";
-import TermsOfServicePage from "./pages/TermsOfServicePage";
-
 import EditProfileModal from "./components/EditProfileModal";
 import Dock from "./components/Dock";
 import {
@@ -839,74 +847,85 @@ const App: React.FC = () => {
     }
   };
 
-  const targetUserForRating = sessionToRate
-    ? allUsers.find(
+  const targetUserForRating = useMemo(() => {
+    if (!sessionToRate) return null;
+    return (
+      allUsers.find(
         (u) =>
           u.id ===
           (sessionToRate.studentId === currentUser?.id
             ? sessionToRate.teacherId
             : sessionToRate.studentId),
-      )
-    : null;
+      ) || null
+    );
+  }, [sessionToRate, allUsers, currentUser?.id]);
 
-  const pendingRequestsCount = currentUser
-    ? connectionRequests.filter(
-        (r) => r.receiverId === currentUser.id && r.status === "pending",
-      ).length
-    : 0;
+  const pendingRequestsCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return connectionRequests.filter(
+      (r) => r.receiverId === currentUser.id && r.status === "pending",
+    ).length;
+  }, [connectionRequests, currentUser]);
 
-  const unreadMessagesCount = currentUser
-    ? messages.filter((m) => m.receiverId === currentUser.id && !m.isRead)
-        .length
-    : 0;
+  const unreadMessagesCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return messages.filter((m) => m.receiverId === currentUser.id && !m.isRead)
+      .length;
+  }, [messages, currentUser]);
 
-  const userNavItems = [
-    {
-      id: "dashboard",
-      path: "/",
-      label: "Dashboard",
-      icon: HomeIcon,
-      count: 0,
-    },
-    {
-      id: "matches",
-      path: "/matches",
-      label: "Discover",
-      icon: MagnifyingGlassIcon,
-      count: 0,
-    },
-    {
-      id: "notifications",
-      path: "/notifications",
-      label: "Notifications",
-      icon: BellIcon,
-      count: pendingRequestsCount,
-    },
-    {
-      id: "chat",
-      path: "/chat",
-      label: "Chat",
-      icon: ChatBubbleLeftRightIcon,
-      count: unreadMessagesCount,
-    },
-    {
-      id: "coach",
-      path: "/coach",
-      label: "AI Coach",
-      icon: SparklesIcon,
-      count: 0,
-    },
-  ];
+  const userNavItems = useMemo(
+    () => [
+      {
+        id: "dashboard",
+        path: "/",
+        label: "Dashboard",
+        icon: HomeIcon,
+        count: 0,
+      },
+      {
+        id: "matches",
+        path: "/matches",
+        label: "Discover",
+        icon: MagnifyingGlassIcon,
+        count: 0,
+      },
+      {
+        id: "notifications",
+        path: "/notifications",
+        label: "Notifications",
+        icon: BellIcon,
+        count: pendingRequestsCount,
+      },
+      {
+        id: "chat",
+        path: "/chat",
+        label: "Chat",
+        icon: ChatBubbleLeftRightIcon,
+        count: unreadMessagesCount,
+      },
+      {
+        id: "coach",
+        path: "/coach",
+        label: "AI Coach",
+        icon: SparklesIcon,
+        count: 0,
+      },
+    ],
+    [pendingRequestsCount, unreadMessagesCount],
+  );
 
-  const adminNavItems = [
-    {
-      id: "admin",
-      path: "/admin",
-      label: "Admin Panel",
-      icon: ShieldCheckIcon,
-      count: 0,
-    },
-  ];
+  const adminNavItems = useMemo(
+    () => [
+      {
+        id: "admin",
+        path: "/admin",
+        label: "Admin Panel",
+        icon: ShieldCheckIcon,
+        count: 0,
+      },
+    ],
+    [],
+  );
 
   return (
     <Router>
@@ -919,461 +938,474 @@ const App: React.FC = () => {
             setViewingProfile={setViewingProfile}
           >
             {(navProps: any) => (
-              <Routes>
-                {/* Public Marketing Routes */}
-                <Route
-                  path="/"
-                  element={
-                    currentUser ? (
-                      isAdmin ? (
-                        <Navigate to="/admin" replace />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                      <p className="text-sm text-text-muted">Loading...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <Routes>
+                  {/* Public Marketing Routes */}
+                  <Route
+                    path="/"
+                    element={
+                      currentUser ? (
+                        isAdmin ? (
+                          <Navigate to="/admin" replace />
+                        ) : (
+                          <Layout
+                            currentUser={currentUser}
+                            isAdmin={isAdmin}
+                            logout={logout}
+                            theme={theme}
+                            toggleTheme={toggleTheme}
+                            navItems={userNavItems}
+                          >
+                            <DashboardPage
+                              sessions={sessions}
+                              ratings={ratings}
+                              users={allUsers.filter((u) => !u.isAdmin)}
+                              openRatingModal={handleOpenRatingModal}
+                              completeSession={handleCompleteSession}
+                              startLiveSession={
+                                navProps.startLiveSessionWithNav
+                              }
+                              currentUser={currentUser}
+                              sendConnectionRequest={sendConnectionRequest}
+                              connectionRequests={connectionRequests}
+                              startChat={navProps.startChatWithNav}
+                              onCategorySelect={(cat) => {
+                                setCategoryFilter(cat);
+                                navProps.navigate("/matches");
+                              }}
+                            />
+                          </Layout>
+                        )
                       ) : (
+                        <LandingPage
+                          onGetStarted={() => navProps.navigate("/login")}
+                        />
+                      )
+                    }
+                  />
+                  <Route
+                    path="/roadmap"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <RoadmapPage />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/blog"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <BlogPage />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/blog/:slug"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <BlogPostPage />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/community"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <CommunityPage />
+                      </Layout>
+                    }
+                  />
+
+                  <Route
+                    path="/login"
+                    element={
+                      currentUser ? (
+                        <Navigate to="/" replace />
+                      ) : (
+                        <LoginPage
+                          onGoogleLogin={handleGoogleLogin}
+                          onEmailLogin={handleEmailLogin}
+                          onSignup={handleEmailSignup}
+                        />
+                      )
+                    }
+                  />
+
+                  {/* Protected Application Routes */}
+                  <Route
+                    path="/matches"
+                    element={
+                      currentUser ? (
                         <Layout
                           currentUser={currentUser}
                           isAdmin={isAdmin}
                           logout={logout}
                           theme={theme}
                           toggleTheme={toggleTheme}
-                          navItems={userNavItems}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
                         >
-                          <DashboardPage
-                            sessions={sessions}
-                            ratings={ratings}
-                            users={allUsers.filter((u) => !u.isAdmin)}
-                            openRatingModal={handleOpenRatingModal}
-                            completeSession={handleCompleteSession}
-                            startLiveSession={navProps.startLiveSessionWithNav}
+                          <MatchesPage
                             currentUser={currentUser}
-                            sendConnectionRequest={sendConnectionRequest}
-                            connectionRequests={connectionRequests}
+                            users={allUsers.filter(
+                              (u) => u.id !== currentUser.id && !u.isAdmin,
+                            )}
+                            allUsers={allUsers}
                             startChat={navProps.startChatWithNav}
-                            onCategorySelect={(cat) => {
-                              setCategoryFilter(cat);
-                              navProps.navigate("/matches");
-                            }}
+                            connectionRequests={connectionRequests}
+                            sendConnectionRequest={sendConnectionRequest}
+                            categoryFilter={categoryFilter}
+                            setCategoryFilter={setCategoryFilter}
+                            handleRequest={handleConnectionRequest}
                           />
                         </Layout>
-                      )
-                    ) : (
-                      <LandingPage
-                        onGetStarted={() => navProps.navigate("/login")}
-                      />
-                    )
-                  }
-                />
-                <Route
-                  path="/roadmap"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <RoadmapPage />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/blog"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <BlogPage />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/blog/:slug"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <BlogPostPage />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/community"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <CommunityPage />
-                    </Layout>
-                  }
-                />
-
-                <Route
-                  path="/login"
-                  element={
-                    currentUser ? (
-                      <Navigate to="/" replace />
-                    ) : (
-                      <LoginPage
-                        onGoogleLogin={handleGoogleLogin}
-                        onEmailLogin={handleEmailLogin}
-                        onSignup={handleEmailSignup}
-                      />
-                    )
-                  }
-                />
-
-                {/* Protected Application Routes */}
-                <Route
-                  path="/matches"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        <MatchesPage
-                          currentUser={currentUser}
-                          users={allUsers.filter(
-                            (u) => u.id !== currentUser.id && !u.isAdmin,
-                          )}
-                          allUsers={allUsers}
-                          startChat={navProps.startChatWithNav}
-                          connectionRequests={connectionRequests}
-                          sendConnectionRequest={sendConnectionRequest}
-                          categoryFilter={categoryFilter}
-                          setCategoryFilter={setCategoryFilter}
-                          handleRequest={handleConnectionRequest}
-                        />
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/notifications"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        <NotificationsPage
-                          requests={connectionRequests}
-                          handleRequest={handleConnectionRequest}
-                          cancelRequest={cancelConnectionRequest}
-                          users={allUsers}
-                          currentUserId={currentUser.id}
-                          viewUserProfile={navProps.viewProfileWithNav}
-                        />
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/chat"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        <ChatPage
-                          currentUser={currentUser}
-                          allUsers={allUsers}
-                          activeChatPartner={activeChatPartner}
-                          setActiveChatPartner={setActiveChatPartner}
-                          messages={messages}
-                          sessions={sessions}
-                          sendMessage={handleSendMessage}
-                          openSchedulingModal={() => setIsScheduling(true)}
-                          handleSessionResponse={handleSessionResponse}
-                          markAsRead={handleMarkAsRead}
-                          clearChat={handleClearChat}
-                          setCurrentPage={(page) => {
-                            if (page === "dashboard") navProps.navigate("/");
-                          }}
-                          onOpenCoach={() => navProps.navigate("/coach")}
-                        />
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/session/:sessionId"
-                  element={
-                    currentUser ? (
-                      activeSession ? (
-                        <LiveSessionPage
-                          session={activeSession}
-                          currentUser={currentUser}
-                          otherUser={
-                            allUsers.find(
-                              (u) =>
-                                u.id ===
-                                (activeSession.studentId === currentUser.id
-                                  ? activeSession.teacherId
-                                  : activeSession.studentId),
-                            )!
-                          }
-                          onEndSession={async () => {
-                            await handleCompleteSession(activeSession.id);
-                            setActiveSession(null);
-                            navProps.navigate("/");
-                          }}
-                        />
                       ) : (
-                        <Navigate to="/" />
+                        <Navigate to="/login" replace />
                       )
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
+                    }
+                  />
 
-                <Route
-                  path="/coach"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        <CoachPage />
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/profile"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        <ProfilePage
-                          ratings={ratings}
-                          users={allUsers}
-                          tokenTransactions={tokenTransactions}
-                          allSkills={allSkills}
-                          addNewSkill={addNewSkill}
-                          openEditModal={() => setIsEditingProfile(true)}
-                        />
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-
-                <Route
-                  path="/user/:userId"
-                  element={
-                    currentUser ? (
-                      <Layout
-                        currentUser={currentUser}
-                        isAdmin={isAdmin}
-                        logout={logout}
-                        theme={theme}
-                        toggleTheme={toggleTheme}
-                        navItems={isAdmin ? adminNavItems : userNavItems}
-                      >
-                        {viewingProfile ? (
-                          <UserProfilePage
-                            user={viewingProfile}
-                            goBack={() => navProps.navigate(-1)}
-                            ratings={ratings}
+                  <Route
+                    path="/notifications"
+                    element={
+                      currentUser ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
+                        >
+                          <NotificationsPage
+                            requests={connectionRequests}
+                            handleRequest={handleConnectionRequest}
+                            cancelRequest={cancelConnectionRequest}
                             users={allUsers}
+                            currentUserId={currentUser.id}
+                            viewUserProfile={navProps.viewProfileWithNav}
+                          />
+                        </Layout>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/chat"
+                    element={
+                      currentUser ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
+                        >
+                          <ChatPage
+                            currentUser={currentUser}
+                            allUsers={allUsers}
+                            activeChatPartner={activeChatPartner}
+                            setActiveChatPartner={setActiveChatPartner}
+                            messages={messages}
+                            sessions={sessions}
+                            sendMessage={handleSendMessage}
+                            openSchedulingModal={() => setIsScheduling(true)}
+                            handleSessionResponse={handleSessionResponse}
+                            markAsRead={handleMarkAsRead}
+                            clearChat={handleClearChat}
+                            setCurrentPage={(page) => {
+                              if (page === "dashboard") navProps.navigate("/");
+                            }}
+                            onOpenCoach={() => navProps.navigate("/coach")}
+                          />
+                        </Layout>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/session/:sessionId"
+                    element={
+                      currentUser ? (
+                        activeSession ? (
+                          <LiveSessionPage
+                            session={activeSession}
+                            currentUser={currentUser}
+                            otherUser={
+                              allUsers.find(
+                                (u) =>
+                                  u.id ===
+                                  (activeSession.studentId === currentUser.id
+                                    ? activeSession.teacherId
+                                    : activeSession.studentId),
+                              )!
+                            }
+                            onEndSession={async () => {
+                              await handleCompleteSession(activeSession.id);
+                              setActiveSession(null);
+                              navProps.navigate("/");
+                            }}
                           />
                         ) : (
                           <Navigate to="/" />
-                        )}
-                      </Layout>
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
+                        )
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
 
-                <Route
-                  path="/admin"
-                  element={
-                    currentUser && isAdmin ? (
+                  <Route
+                    path="/coach"
+                    element={
+                      currentUser ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
+                        >
+                          <CoachPage />
+                        </Layout>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/profile"
+                    element={
+                      currentUser ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
+                        >
+                          <ProfilePage
+                            ratings={ratings}
+                            users={allUsers}
+                            tokenTransactions={tokenTransactions}
+                            allSkills={allSkills}
+                            addNewSkill={addNewSkill}
+                            openEditModal={() => setIsEditingProfile(true)}
+                          />
+                        </Layout>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/user/:userId"
+                    element={
+                      currentUser ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={isAdmin ? adminNavItems : userNavItems}
+                        >
+                          {viewingProfile ? (
+                            <UserProfilePage
+                              user={viewingProfile}
+                              goBack={() => navProps.navigate(-1)}
+                              ratings={ratings}
+                              users={allUsers}
+                            />
+                          ) : (
+                            <Navigate to="/" />
+                          )}
+                        </Layout>
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/admin"
+                    element={
+                      currentUser && isAdmin ? (
+                        <Layout
+                          currentUser={currentUser}
+                          isAdmin={isAdmin}
+                          logout={logout}
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          navItems={adminNavItems}
+                        >
+                          <AdminDashboardPage />
+                        </Layout>
+                      ) : (
+                        <Navigate to="/" replace />
+                      )
+                    }
+                  />
+
+                  <Route
+                    path="/privacy-policy"
+                    element={
                       <Layout
-                        currentUser={currentUser}
+                        currentUser={currentUser || undefined}
                         isAdmin={isAdmin}
                         logout={logout}
                         theme={theme}
                         toggleTheme={toggleTheme}
-                        navItems={adminNavItems}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
                       >
-                        <AdminDashboardPage />
+                        <PrivacyPolicyPage />
                       </Layout>
-                    ) : (
-                      <Navigate to="/" replace />
-                    )
-                  }
-                />
+                    }
+                  />
+                  <Route
+                    path="/cookie-policy"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <CookiePolicyPage />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/terms-of-service"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <TermsOfServicePage />
+                      </Layout>
+                    }
+                  />
 
-                <Route
-                  path="/privacy-policy"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <PrivacyPolicyPage />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/cookie-policy"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <CookiePolicyPage />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/terms-of-service"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <TermsOfServicePage />
-                    </Layout>
-                  }
-                />
+                  <Route
+                    path="/forum"
+                    element={
+                      <Layout
+                        currentUser={currentUser || undefined}
+                        isAdmin={isAdmin}
+                        logout={logout}
+                        theme={theme}
+                        toggleTheme={toggleTheme}
+                        navItems={
+                          currentUser
+                            ? isAdmin
+                              ? adminNavItems
+                              : userNavItems
+                            : []
+                        }
+                      >
+                        <ForumPage />
+                      </Layout>
+                    }
+                  />
 
-                <Route
-                  path="/forum"
-                  element={
-                    <Layout
-                      currentUser={currentUser || undefined}
-                      isAdmin={isAdmin}
-                      logout={logout}
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      navItems={
-                        currentUser
-                          ? isAdmin
-                            ? adminNavItems
-                            : userNavItems
-                          : []
-                      }
-                    >
-                      <ForumPage />
-                    </Layout>
-                  }
-                />
-
-                {/* Catch-all */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                  {/* Catch-all */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
             )}
           </NavigationWrapper>
 
