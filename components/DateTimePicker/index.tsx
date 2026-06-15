@@ -42,27 +42,28 @@ export const CustomDatePicker: React.FC<DatePickerProps> = ({
     : placeholder;
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div className="relative w-full flex flex-col" ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none transition-all hover:border-sky-400 dark:hover:border-sky-500 group"
+        className="w-full flex items-center justify-between px-4 py-3 bg-background border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
       >
         <span
-          className={`text-sm ${value ? "text-slate-900 dark:text-white font-medium" : "text-slate-400"}`}
+          className={`text-sm font-semibold ${value ? "text-text-primary" : "text-text-muted"}`}
         >
           {formattedDisplay}
         </span>
-        <CalendarIcon className="w-5 h-5 text-slate-400 group-hover:text-sky-500 transition-colors" />
+        <CalendarIcon className="w-5 h-5 text-text-muted group-hover:text-sky-500 transition-colors" />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 5, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute left-0 top-full z-[60]"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-0 right-0 z-50 mb-2 flex justify-center"
           >
             <Calendar
               selectedDate={value}
@@ -114,27 +115,28 @@ export const CustomTimePicker: React.FC<TimePickerProps> = ({
     : placeholder;
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div className="relative w-full flex flex-col" ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none transition-all hover:border-sky-400 dark:hover:border-sky-500 group"
+        className="w-full flex items-center justify-between px-4 py-3 bg-background border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
       >
         <span
-          className={`text-sm ${value ? "text-slate-900 dark:text-white font-medium" : "text-slate-400"}`}
+          className={`text-sm font-semibold ${value ? "text-text-primary" : "text-text-muted"}`}
         >
           {formattedDisplay}
         </span>
-        <ClockIcon className="w-5 h-5 text-slate-400 group-hover:text-sky-500 transition-colors" />
+        <ClockIcon className="w-5 h-5 text-text-muted group-hover:text-sky-500 transition-colors" />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 5, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 top-full z-[60]"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-0 right-0 z-50 mb-2 flex justify-center"
           >
             <TimePicker selectedTime={value} onSelect={onChange} />
           </motion.div>

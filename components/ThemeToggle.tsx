@@ -23,11 +23,11 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, toggleTheme }) => {
     return (
         <button
             onClick={toggleTheme}
-            className="relative w-14 h-8 flex items-center bg-slate-200 dark:bg-slate-800 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-50 dark:focus:ring-offset-slate-900"
+            className="relative w-14 h-8 flex items-center bg-slate-200/60 dark:bg-slate-800/80 shadow-[inset_2px_2px_5px_rgba(163,177,198,0.35)] dark:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5)] rounded-full p-1 transition-colors duration-300 focus:outline-none"
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
             <motion.div
-                className="w-6 h-6 rounded-full bg-white dark:bg-slate-600 shadow-md flex items-center justify-center"
+                className="w-6 h-6 rounded-full bg-slate-50 dark:bg-slate-900 shadow-[2px_2px_5px_rgba(163,177,198,0.55),_-2px_-2px_5px_rgba(255,255,255,0.95)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.45),_-2px_-2px_5px_rgba(255,255,255,0.03)] flex items-center justify-center border border-slate-200/10 dark:border-slate-800/10"
                 layout
                 transition={{ type: "spring", stiffness: 700, damping: 30 }}
                 style={{

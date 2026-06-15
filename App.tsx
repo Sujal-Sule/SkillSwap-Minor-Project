@@ -85,6 +85,7 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
 
 const parseAsUTC = (dateString: string) => {
@@ -137,11 +138,9 @@ const Layout = ({
 
       <main
         className={`${
-          location.pathname === "/chat"
-            ? "pt-20 px-0 h-[calc(100vh-80px)]"
-            : location.pathname === "/coach"
-              ? "fixed top-0 left-0 w-full h-full pt-0 z-0 overflow-hidden"
-              : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
+          location.pathname === "/chat" || location.pathname === "/coach"
+            ? "fixed top-0 left-0 w-full h-full pt-0 z-0 overflow-hidden"
+            : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
         }`}
       >
         {children}
@@ -269,6 +268,63 @@ const NavigationWrapper: React.FC<NavigationWrapperProps> = ({
     viewProfileWithNav,
     navigate,
   }) as React.ReactElement;
+};
+
+const LiveSessionWrapper: React.FC<{
+  sessions: Session[];
+  currentUser: User;
+  allUsers: User[];
+  activeSession: Session | null;
+  setActiveSession: (s: Session | null) => void;
+  onEndSession: (sessionId: string) => Promise<void>;
+}> = ({
+  sessions,
+  currentUser,
+  allUsers,
+  activeSession,
+  setActiveSession,
+  onEndSession,
+}) => {
+  const { sessionId } = useParams<{ sessionId: string }>();
+
+  const currentSession = useMemo(() => {
+    if (activeSession && activeSession.id === sessionId) {
+      return activeSession;
+    }
+    const found = sessions.find((s) => s.id === sessionId);
+    return found || null;
+  }, [activeSession, sessions, sessionId]);
+
+  useEffect(() => {
+    if (currentSession && (!activeSession || activeSession.id !== currentSession.id)) {
+      setActiveSession(currentSession);
+    }
+  }, [currentSession, activeSession, setActiveSession]);
+
+  if (!currentSession) {
+    return <Navigate to="/" replace />;
+  }
+
+  const otherUser = allUsers.find(
+    (u) =>
+      u.id ===
+      (currentSession.studentId === currentUser.id
+        ? currentSession.teacherId
+        : currentSession.studentId)
+  );
+
+  if (!otherUser) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <LiveSessionPage
+      session={currentSession}
+      currentUser={currentUser}
+      otherUser={otherUser}
+      onEndSession={() => onEndSession(currentSession.id)}
+    />
+  );
 };
 
 const App: React.FC = () => {
@@ -927,11 +983,29 @@ const App: React.FC = () => {
     [],
   );
 
+  if (authLoading) {
+    return (
+      <div className="w-full min-h-screen bg-[#e8edf2] dark:bg-[#121a2e] flex items-center justify-center font-sans">
+        <div className="text-center">
+          <div className="relative mb-4 mx-auto w-16 h-16">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 animate-pulse blur-sm scale-105" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-400 to-purple-500 flex items-center justify-center shadow-lg">
+              <SparklesIcon className="w-9 h-9 text-white animate-spin-slow" />
+            </div>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 animate-pulse uppercase tracking-wider">
+            Loading SkillSwap...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <ScrollToTop />
       <ErrorBoundary>
-        <div className="w-full min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
+        <div className="w-full min-h-screen bg-background text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">
           <NavigationWrapper
             setActiveChatPartner={setActiveChatPartner}
             setActiveSession={setActiveSession}
@@ -1192,28 +1266,18 @@ const App: React.FC = () => {
                     path="/session/:sessionId"
                     element={
                       currentUser ? (
-                        activeSession ? (
-                          <LiveSessionPage
-                            session={activeSession}
-                            currentUser={currentUser}
-                            otherUser={
-                              allUsers.find(
-                                (u) =>
-                                  u.id ===
-                                  (activeSession.studentId === currentUser.id
-                                    ? activeSession.teacherId
-                                    : activeSession.studentId),
-                              )!
-                            }
-                            onEndSession={async () => {
-                              await handleCompleteSession(activeSession.id);
-                              setActiveSession(null);
-                              navProps.navigate("/");
-                            }}
-                          />
-                        ) : (
-                          <Navigate to="/" />
-                        )
+                        <LiveSessionWrapper
+                          sessions={sessions}
+                          currentUser={currentUser}
+                          allUsers={allUsers}
+                          activeSession={activeSession}
+                          setActiveSession={setActiveSession}
+                          onEndSession={async (sessionId) => {
+                            await handleCompleteSession(sessionId);
+                            setActiveSession(null);
+                            navProps.navigate("/");
+                          }}
+                        />
                       ) : (
                         <Navigate to="/login" replace />
                       )

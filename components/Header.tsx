@@ -33,72 +33,54 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40">
+    <header className="fixed top-4 left-4 right-4 z-40 max-w-7xl mx-auto">
       <div
-        className="glassy-nav-container w-full shadow-sm backdrop-blur-xl border-b border-white/10 dark:border-slate-700/50"
-        style={{
-          backgroundColor: "var(--sw-surface)", // Use surface token but with opacity handled by class
-        }}
+        className="w-full rounded-[24px] bg-background/95 dark:bg-background/90 backdrop-blur-md border border-slate-200/20 dark:border-slate-800/10 transition-all duration-300 shadow-[6px_6px_16px_rgba(163,177,198,0.35),_-6px_-6px_16px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_16px_rgba(0,0,0,0.5),_-6px_-6px_16px_rgba(255,255,255,0.03)]"
       >
         <div className="flex items-center justify-between h-20 px-8">
           {/* Left side: Logo and Nav */}
           <div className="flex items-center gap-12">
             <div
               onClick={() => navigate("/")}
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className="cursor-pointer hover:opacity-80 transition-opacity flex items-center"
             >
-              <Logo size={36} />
+              <Logo size={56} />
             </div>
-            <LayoutGroup>
-              <nav className="hidden md:flex items-center gap-1">
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.id}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `relative px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-200 active:scale-95 ${
-                        isActive
-                          ? "text-nav-text-active"
-                          : "text-text-muted hover:text-text-primary hover:bg-surface-highlight/10"
-                      }`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <span className="relative z-10 flex items-center gap-2">
-                          {item.label}
-                          {item.count > 0 && (
-                            <span className="relative flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] bg-rose-500 text-white rounded-full">
-                              {item.count > 9 ? "9+" : item.count}
-                              <span className="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-75"></span>
-                            </span>
-                          )}
+            <nav className="hidden md:flex items-center gap-2">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.id}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `relative px-5 py-2 text-sm font-bold rounded-full transition-all duration-300 active:scale-95 flex items-center justify-center ${
+                      isActive
+                        ? "text-sky-600 dark:text-sky-400 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.4),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.5),_inset_-3px_-3px_6px_rgba(255,255,255,0.03)] border border-slate-200/10 dark:border-slate-800/10"
+                        : "text-text-muted hover:text-text-primary hover:shadow-[3px_3px_6px_rgba(163,177,198,0.25),_-3px_-3px_6px_rgba(255,255,255,0.7)] dark:hover:shadow-[3px_3px_6px_rgba(0,0,0,0.35),_-3px_-3px_6px_rgba(255,255,255,0.02)] border border-transparent"
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <span className="relative z-10 flex items-center gap-2">
+                      {item.label}
+                      {item.count > 0 && (
+                        <span className="relative flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] bg-rose-500 text-white rounded-full font-bold">
+                          {item.count > 9 ? "9+" : item.count}
+                          <span className="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-75"></span>
                         </span>
-                        {isActive && (
-                          <motion.div
-                            layoutId="active-nav-pill"
-                            className="absolute inset-0 bg-nav-active rounded-full shadow-sm shadow-sky-500/10"
-                            transition={{
-                              type: "spring",
-                              bounce: 0.2,
-                              duration: 0.6,
-                            }}
-                          />
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-              </nav>
-            </LayoutGroup>
+                      )}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
           </div>
 
           {/* Right side controls */}
           <div className="flex items-center gap-6">
             {/* Token Balance - Gamified */}
             {!isAdmin && currentUser && (
-              <div className="hidden sm:flex items-center gap-2.5 bg-surface/50 rounded-full px-5 py-2 border border-amber-500/30 shadow-lg shadow-amber-500/20">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[11px] font-bold text-white shadow-inner shadow-amber-900/50">
+              <div className="hidden sm:flex items-center gap-2.5 bg-background rounded-full px-5 py-2 border border-slate-200/10 dark:border-slate-800/10 shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.45),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-[11px] font-bold text-white shadow-[2px_2px_5px_rgba(217,119,6,0.35),_inset_-2px_-2px_4px_rgba(255,255,255,0.2)]">
                   S
                 </div>
                 <span className="text-sm font-bold text-text-primary">
@@ -110,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            <div className="h-8 w-px bg-border hidden sm:block"></div>
+            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800/50 hidden sm:block"></div>
 
             {/* Theme Toggle */}
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
@@ -144,7 +126,7 @@ const Header: React.FC<HeaderProps> = ({
 
                 <button
                   onClick={logout}
-                  className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                  className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-background text-text-muted hover:text-rose-500 border border-slate-200/10 dark:border-slate-800/10 shadow-[3px_3px_8px_rgba(163,177,198,0.3),_-3px_-3px_8px_rgba(255,255,255,0.8)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.4),_-3px_-3px_8px_rgba(255,255,255,0.02)] active:scale-95 transition-all"
                   title="Logout"
                 >
                   <svg
@@ -166,7 +148,7 @@ const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={() => navigate("/login")}
-                className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-full shadow-lg shadow-sky-500/25 transition-all active:scale-95"
+                className="px-6 py-2.5 bg-background hover:bg-slate-100 text-sky-600 dark:text-sky-400 text-sm font-extrabold rounded-full border border-slate-200/10 dark:border-slate-800/10 shadow-[3px_3px_8px_rgba(163,177,198,0.35),_-3px_-3px_8px_rgba(255,255,255,0.85)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.45),_-3px_-3px_8px_rgba(255,255,255,0.02)] transition-all active:scale-95"
               >
                 Login
               </button>

@@ -17,6 +17,7 @@ import {
   VideoCameraIcon,
   EllipsisVerticalIcon,
   ChatBubbleLeftRightIcon,
+  ClockIcon,
 } from "../components/icons";
 import SessionContextBanner from "../components/SessionContextBanner";
 
@@ -196,16 +197,25 @@ const ChatPage: React.FC<ChatPageProps> = ({
   const renderSessionCard = (session: Session) => {
     const isProposer = session.proposerId === currentUser.id;
     const isPending = session.status === "proposed";
+    const isExpired = new Date().getTime() > new Date(session.scheduledTime).getTime();
 
     return (
       <div className="my-2 p-4 bg-surface rounded-2xl max-w-sm border border-border shadow-sm">
         <h4 className="font-bold text-text-primary">
-          {isPending ? "Session Proposed!" : "Session Scheduled"}
+          {isPending
+            ? isExpired
+              ? "Session Proposed (Expired)"
+              : "Session Proposed!"
+            : isExpired
+              ? "Session Scheduled (Passed)"
+              : "Session Scheduled"}
         </h4>
         <p className="text-sm text-text-muted mt-2">
-          {isProposer
-            ? `You proposed this session. Waiting for response.`
-            : `Proposed a session with you.`}
+          {isPending && isExpired
+            ? "This session proposal has expired."
+            : isProposer
+              ? `You proposed this session. Waiting for response.`
+              : `Proposed a session with you.`}
         </p>
         <div className="mt-3 pt-3 border-t border-border space-y-1">
           <div className="flex justify-between text-sm">
@@ -231,7 +241,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
           </div>
         </div>
 
-        {!isProposer && isPending && (
+        {!isProposer && isPending && !isExpired && (
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => handleSessionResponse(session.id, "accepted")}
@@ -247,10 +257,21 @@ const ChatPage: React.FC<ChatPageProps> = ({
             </button>
           </div>
         )}
+        {isPending && isExpired && (
+          <div className="mt-4 text-center">
+            <span className="inline-block px-3 py-1 bg-slate-500/10 text-slate-500 text-xs font-semibold rounded-full border border-slate-500/20">
+              Expired
+            </span>
+          </div>
+        )}
         {session.status === "scheduled" && (
           <div className="mt-4 text-center">
-            <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-semibold rounded-full border border-emerald-500/20">
-              Accepted & Scheduled
+            <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${
+              isExpired
+                ? "bg-slate-500/10 text-slate-500 border-slate-500/20"
+                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+            }`}>
+              {isExpired ? "Passed" : "Accepted & Scheduled"}
             </span>
           </div>
         )}
@@ -266,275 +287,318 @@ const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   return (
-    <div className="h-[calc(100vh-7rem)] w-full bg-background text-text-primary flex font-sans">
-      {/* Left Panel: Conversation List */}
-      <aside className="w-80 flex-shrink-0 bg-surface border-r border-border flex flex-col">
-        <header className="p-4 border-b border-border flex justify-between items-center flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <img
-              src={currentUser.avatarUrl}
-              alt={currentUser.name}
-              className="w-10 h-10 rounded-full"
-            />
-            <div>
-              <h2 className="font-semibold text-text-primary">
-                {currentUser.name}
-              </h2>
-              <p className="text-xs text-emerald-500">Online</p>
+    <div className="h-screen w-full bg-[#e8edf2] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 flex pt-28 pb-6 px-6 font-sans">
+      {/* Unified Chat Workspace Container */}
+      <div className="flex-1 flex bg-[#e8edf2] dark:bg-[#121a2e] border border-slate-200/20 dark:border-slate-800/10 rounded-[32px] shadow-[6px_6px_16px_rgba(163,177,198,0.35),_-6px_-6px_16px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_16px_rgba(0,0,0,0.5),_-6px_-6px_16px_rgba(255,255,255,0.02)] overflow-hidden">
+        
+        {/* Left Panel: Conversation List */}
+        <aside className="w-80 flex-shrink-0 border-r border-slate-200/30 dark:border-slate-800/40 flex flex-col bg-[#e8edf2]/30 dark:bg-[#121a2e]/30">
+          <header className="p-5 border-b border-slate-200/30 dark:border-slate-800/40 flex justify-between items-center flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.name}
+                className="w-10 h-10 rounded-full border border-slate-200/50 dark:border-slate-800/50 shadow-sm"
+              />
+              <div>
+                <h2 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                  {currentUser.name}
+                </h2>
+                <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Online</p>
+              </div>
+            </div>
+            <button className="p-2 bg-[#e8edf2] dark:bg-[#121a2e] rounded-xl hover:shadow-[inset_2px_2px_4px_rgba(163,177,198,0.3),_inset_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.45),_inset_-2px_-2px_4px_rgba(255,255,255,0.02)] text-slate-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-shadow">
+              <Cog6ToothIcon className="w-5 h-5" />
+            </button>
+          </header>
+          
+          <div className="p-4 flex-shrink-0">
+            <div className="relative">
+              <MagnifyingGlassIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search for users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#e8edf2] dark:bg-[#121a2e] rounded-2xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 border border-slate-200/30 dark:border-slate-800/20 shadow-[inset_2px_2px_5px_rgba(163,177,198,0.25),_inset_-2px_-2px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.3),_inset_-2px_-2px_5px_rgba(255,255,255,0.01)]"
+              />
             </div>
           </div>
-          <button className="text-text-muted hover:text-text-primary">
-            <Cog6ToothIcon className="w-6 h-6" />
-          </button>
-        </header>
-        <div className="p-4 flex-shrink-0">
-          <div className="relative">
-            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search for users or conversations"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-background rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-text-primary placeholder-text-muted border border-border"
-            />
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto">
-          <ul>
-            {filteredConversations.map(({ user, lastMessage, unreadCount }) => (
-              <li key={user.id}>
-                <button
-                  onClick={() => setActiveChatPartner(user)}
-                  className={`w-full flex items-center gap-4 p-5 text-left transition-all duration-200 
-                    ${
-                      activeChatPartner?.id === user.id
-                        ? "bg-surface-highlight border-l-4 border-sky-500 shadow-sm"
-                        : "hover:bg-surface-hover hover:-translate-y-0.5"
-                    }`}
-                >
-                  <div className="relative">
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    {user.isOnline && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-surface rounded-full"></span>
-                    )}
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="flex justify-between items-baseline">
-                      <p
-                        className={`font-semibold truncate ${activeChatPartner?.id === user.id ? "text-sky-600 dark:text-sky-400" : "text-text-primary"}`}
-                      >
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-text-muted flex-shrink-0 ml-2">
-                        {lastMessage
-                          ? formatRelativeTime(lastMessage.timestamp)
-                          : "New"}
-                      </p>
-                    </div>
-                    <div className="flex justify-between items-start mt-1">
-                      <p
-                        className={`text-sm truncate pr-2 ${unreadCount > 0 ? "text-text-primary font-medium" : "text-text-muted"}`}
-                      >
-                        {lastMessage
-                          ? lastMessage.text
-                          : "Start a conversation"}
-                      </p>
-                      {unreadCount > 0 && (
-                        <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-sky-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                          {unreadCount}
-                        </span>
+
+          <nav className="flex-1 overflow-y-auto scrollbar-thin px-2 py-3">
+            <ul className="space-y-2">
+              {filteredConversations.map(({ user, lastMessage, unreadCount }) => (
+                <li key={user.id}>
+                  <button
+                    onClick={() => setActiveChatPartner(user)}
+                    className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all duration-200 
+                      ${
+                        activeChatPartner?.id === user.id
+                          ? "bg-gradient-to-r from-sky-500/5 to-indigo-500/5 border-l-4 border-sky-500 shadow-[inset_2px_2px_5px_rgba(163,177,198,0.25),_inset_-2px_-2px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.35),_inset_-2px_-2px_5px_rgba(255,255,255,0.01)] text-slate-800 dark:text-slate-100"
+                          : "hover:bg-slate-200/30 dark:hover:bg-slate-800/30 text-slate-700 dark:text-slate-300"
+                      }`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.name}
+                        className="w-11 h-11 rounded-full object-cover border border-slate-200/40 dark:border-slate-800/40"
+                      />
+                      {user.isOnline && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#e8edf2] dark:border-[#121a2e] rounded-full"></span>
                       )}
                     </div>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </aside>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-baseline">
+                        <p
+                          className={`font-semibold text-xs sm:text-sm truncate ${
+                            activeChatPartner?.id === user.id
+                              ? "text-sky-600 dark:text-sky-400"
+                              : "text-slate-800 dark:text-slate-200"
+                          }`}
+                        >
+                          {user.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
+                          {lastMessage
+                            ? formatRelativeTime(lastMessage.timestamp)
+                            : "New"}
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-start mt-1">
+                        <p
+                          className={`text-xs truncate pr-2 ${
+                            unreadCount > 0
+                              ? "text-slate-900 dark:text-slate-100 font-bold"
+                              : "text-slate-400 dark:text-slate-500"
+                          }`}
+                        >
+                          {lastMessage
+                            ? lastMessage.text
+                            : "Start a conversation"}
+                        </p>
+                        {unreadCount > 0 && (
+                          <span className="flex-shrink-0 min-w-[18px] h-4.5 px-1 bg-gradient-to-tr from-sky-500 to-indigo-500 text-white text-[9px] rounded-full flex items-center justify-center font-black">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
 
-      {/* Right Panel: Active Chat */}
-      <main className="flex-1 flex flex-col bg-background/50">
-        {activeChatPartner ? (
-          <>
-            <header className="p-5 border-b border-border flex justify-between items-center flex-shrink-0 bg-surface/80 backdrop-blur-md">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <img
-                    src={activeChatPartner.avatarUrl}
-                    alt={activeChatPartner.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  {activeChatPartner.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-surface rounded-full"></span>
-                  )}
-                </div>
-                <div>
-                  <h2 className="font-semibold text-text-primary text-lg">
-                    {activeChatPartner.name}
-                  </h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-emerald-500">Online</p>
-                    {/* Shared skills tags */}
-                    {activeChatPartner.skills?.slice(0, 2).map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 text-xs bg-sky-500/10 text-sky-500 rounded border border-sky-500/20"
-                      >
-                        {skill.name}
-                      </span>
-                    ))}
+        {/* Right Panel: Active Chat / Empty State */}
+        <main className="flex-1 flex flex-col bg-[#e8edf2]/10 dark:bg-[#121a2e]/10">
+          {activeChatPartner ? (
+            <>
+              <header className="p-5 border-b border-slate-200/30 dark:border-slate-800/40 flex justify-between items-center flex-shrink-0 bg-[#e8edf2]/50 dark:bg-[#121a2e]/50 backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={activeChatPartner.avatarUrl}
+                      alt={activeChatPartner.name}
+                      className="w-11 h-11 rounded-full object-cover border border-slate-200/40 dark:border-slate-800/40"
+                    />
+                    {activeChatPartner.isOnline && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#e8edf2] dark:border-[#121a2e] rounded-full"></span>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                      {activeChatPartner.name}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Online</p>
+                      {/* Shared skills tags */}
+                      {activeChatPartner.teaches?.slice(0, 2).map((skill, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 text-[9px] font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-full border border-sky-500/25"
+                        >
+                          {skill.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 relative">
-                {/* Removed VideoCameraIcon */}
-                <button
-                  className="text-text-muted hover:text-text-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(!showMenu);
-                  }}
-                >
-                  <EllipsisVerticalIcon className="w-6 h-6" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 top-10 w-48 bg-surface border border-border rounded-md shadow-lg py-1 z-50">
-                    <button
-                      className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-surface-hover"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            "Are you sure you want to clear this chat? This cannot be undone.",
-                          )
-                        ) {
-                          clearChat(activeChatPartner.id);
+                <div className="flex items-center gap-2 relative">
+                  <button
+                    onClick={openSchedulingModal}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[2px_2px_5px_rgba(14,165,233,0.2)] hover:shadow-sky-500/30 active:scale-95"
+                  >
+                    <ClockIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Propose Session</span>
+                  </button>
+                  <button
+                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(!showMenu);
+                    }}
+                  >
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
+                  {showMenu && (
+                    <div className="absolute right-0 top-12 w-48 bg-[#e8edf2] dark:bg-[#1e293b] border border-slate-200/30 dark:border-slate-800/30 rounded-xl shadow-lg py-1.5 z-50">
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 font-semibold border-b border-slate-200/10 dark:border-slate-800/10"
+                        onClick={() => {
+                          openSchedulingModal();
                           setShowMenu(false);
-                        }
-                      }}
-                    >
-                      Clear Chat (Delete)
-                    </button>
-                  </div>
-                )}
-              </div>
-            </header>
-
-            {/* Session Context Banner */}
-            <SessionContextBanner
-              session={
-                sessions.find(
-                  (s) =>
-                    (s.proposerId === currentUser.id &&
-                      s.partnerId === activeChatPartner.id) ||
-                    (s.partnerId === currentUser.id &&
-                      s.proposerId === activeChatPartner.id),
-                ) || null
-              }
-              partnerName={activeChatPartner.name}
-              onProposeSession={openSchedulingModal}
-            />
-            {/* ... rest of render (messages map) can stay similar, just updated ... */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {activeConversationMessages.map((msg) => {
-                const isSender = msg.senderId === currentUser.id;
-                if (msg.messageType === "ai_suggestion") {
-                  return (
-                    <div key={msg.id} className="flex justify-center">
-                      <button className="flex items-center gap-2 px-4 py-2 text-sm bg-surface-highlight border border-border rounded-full text-sky-500 hover:bg-surface-hover transition-colors shadow-sm">
-                        <SparklesIcon className="w-4 h-4" />
-                        <span>{msg.text}</span>
+                        }}
+                      >
+                        Propose Session
+                      </button>
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 font-semibold"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "Are you sure you want to clear this chat? This cannot be undone.",
+                            )
+                          ) {
+                            clearChat(activeChatPartner.id);
+                            setShowMenu(false);
+                          }
+                        }}
+                      >
+                        Clear Chat (Delete)
                       </button>
                     </div>
-                  );
-                }
-                if (msg.messageType === "session_card" && msg.session) {
-                  return (
-                    <div key={msg.id} className="flex justify-center">
-                      {renderSessionCard(msg.session)}
-                    </div>
-                  );
-                }
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className={`flex items-end gap-3 ${isSender ? "justify-end" : ""}`}
-                  >
-                    {!isSender && (
-                      <img
-                        src={activeChatPartner.avatarUrl}
-                        alt={activeChatPartner.name}
-                        className="w-8 h-8 rounded-full"
-                      />
-                    )}
-                    <div
-                      className={`max-w-md px-5 py-3 rounded-2xl shadow-sm border ${
-                        isSender
-                          ? "bg-sky-500 text-white rounded-br-none border-sky-600"
-                          : "bg-surface text-text-primary rounded-bl-none border-border"
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed">{msg.text}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
+                  )}
+                </div>
+              </header>
 
-            <div className="p-5 border-t border-border bg-surface/80 backdrop-blur-md shadow-lg flex-shrink-0">
-              <form
-                onSubmit={handleSendMessage}
-                className="flex items-center gap-4"
-              >
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-background border border-border rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow text-text-primary placeholder-text-muted"
-                />
-                <motion.button
-                  type="submit"
-                  whileTap={{ scale: 0.95 }}
-                  className="p-3 bg-sky-600 text-white rounded-full hover:bg-sky-700 disabled:bg-sky-800 disabled:opacity-50 shadow-md transition-colors"
-                  disabled={!newMessage.trim()}
+              {/* Session Context Banner */}
+              <SessionContextBanner
+                session={(() => {
+                  const chatSessions = sessions.filter(
+                    (s) =>
+                      (s.studentId === currentUser.id && s.teacherId === activeChatPartner.id) ||
+                      (s.studentId === activeChatPartner.id && s.teacherId === currentUser.id) ||
+                      (s.proposerId === currentUser.id && s.teacherId === activeChatPartner.id) ||
+                      (s.proposerId === activeChatPartner.id && s.teacherId === currentUser.id)
+                  );
+                  
+                  // Find first active (not expired) session
+                  const active = chatSessions.find((s) => {
+                    const isExpired = new Date().getTime() > new Date(s.scheduledTime).getTime();
+                    return !isExpired && (s.status === "proposed" || s.status === "scheduled" || s.status === "active");
+                  });
+
+                  // Fallback to the latest session
+                  return active || [...chatSessions].sort(
+                    (a, b) => new Date(b.scheduledTime).getTime() - new Date(a.scheduledTime).getTime()
+                  )[0] || null;
+                })()}
+                partnerName={activeChatPartner.name}
+                onProposeSession={openSchedulingModal}
+              />
+
+              {/* Message Body area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+                {activeConversationMessages.map((msg) => {
+                  const isSender = msg.senderId === currentUser.id;
+                  if (msg.messageType === "ai_suggestion") {
+                    return (
+                      <div key={msg.id} className="flex justify-center animate-fade-in">
+                        <button className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-gradient-to-tr from-sky-400/10 to-purple-500/10 border border-sky-400/20 rounded-full text-sky-600 dark:text-sky-400 hover:opacity-95 transition-all shadow-[2px_2px_6px_rgba(163,177,198,0.25),_-2px_-2px_6px_rgba(255,255,255,0.7)] dark:shadow-[2px_2px_6px_rgba(0,0,0,0.35),_-2px_-2px_6px_rgba(255,255,255,0.01)]">
+                          <SparklesIcon className="w-4 h-4 text-sky-500" />
+                          <span>{msg.text}</span>
+                        </button>
+                      </div>
+                    );
+                  }
+                  if (msg.messageType === "session_card" && msg.session) {
+                    return (
+                      <div key={msg.id} className="flex justify-center">
+                        {renderSessionCard(msg.session)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex items-end gap-3.5 ${isSender ? "justify-end" : "justify-start"}`}
+                    >
+                      {!isSender && (
+                        <img
+                          src={activeChatPartner.avatarUrl}
+                          alt={activeChatPartner.name}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200/30 dark:border-slate-800/30"
+                        />
+                      )}
+                      <div
+                        className={`max-w-md px-5 py-3.5 rounded-[22px] border ${
+                          isSender
+                            ? "bg-gradient-to-tr from-sky-500/5 to-indigo-500/5 dark:from-sky-500/10 dark:to-indigo-500/10 border-sky-400/30 dark:border-sky-500/20 text-slate-850 dark:text-slate-100 rounded-br-none shadow-[3px_3px_8px_rgba(163,177,198,0.3),_-3px_-3px_8px_rgba(255,255,255,0.85)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.45),_-3px_-3px_8px_rgba(255,255,255,0.03)]"
+                            : "bg-[#e8edf2] dark:bg-[#121a2e] border border-slate-200/20 dark:border-slate-800/10 text-slate-900 dark:text-slate-100 rounded-bl-none shadow-[3px_3px_8px_rgba(163,177,198,0.35),_-3px_-3px_8px_rgba(255,255,255,0.85)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.45),_-3px_-3px_8px_rgba(255,255,255,0.02)]"
+                        }`}
+                      >
+                        <p className="text-xs sm:text-sm leading-relaxed">{msg.text}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Bar container */}
+              <div className="p-5 border-t border-slate-200/30 dark:border-slate-800/40 bg-[#e8edf2]/50 dark:bg-[#121a2e]/50 backdrop-blur-sm flex-shrink-0">
+                <form
+                  onSubmit={handleSendMessage}
+                  className="flex items-center gap-4"
                 >
-                  <PaperAirplaneIcon className="w-5 h-5" />
-                </motion.button>
-              </form>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-[#e8edf2] dark:bg-[#121a2e] rounded-2xl px-5 py-3.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 border border-slate-200/30 dark:border-slate-800/20 shadow-[inset_2px_2px_5px_rgba(163,177,198,0.25),_inset_-2px_-2px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.35),_inset_-2px_-2px_5px_rgba(255,255,255,0.01)]"
+                  />
+                  <motion.button
+                    type="submit"
+                    whileTap={{ scale: 0.95 }}
+                    className="p-3.5 bg-gradient-to-tr from-sky-500 to-indigo-600 text-white rounded-full hover:opacity-95 disabled:opacity-50 shadow-[3px_3px_8px_rgba(163,177,198,0.35),_-3px_-3px_8px_rgba(255,255,255,0.8)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.45),_-3px_-3px_8px_rgba(255,255,255,0.02)] transition-opacity"
+                    disabled={!newMessage.trim()}
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                  </motion.button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-center p-6">
+              <div className="max-w-md animate-fade-in p-8 rounded-[32px] bg-[#e8edf2]/30 dark:bg-[#121a2e]/30 border border-slate-200/20 dark:border-slate-800/10 shadow-[inset_3px_3px_8px_rgba(163,177,198,0.25),_inset_-3px_-3px_8px_rgba(255,255,255,0.65)] dark:shadow-[inset_3px_3px_8px_rgba(0,0,0,0.35),_inset_-3px_-3px_8px_rgba(255,255,255,0.01)]">
+                <ChatBubbleLeftRightIcon className="w-16 h-16 text-sky-500/80 mx-auto mb-4" />
+                <h2 className="text-xl font-black text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                  Choose a learning partner
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs mx-auto">
+                  Select a conversation to coordinate sessions and share knowledge
+                </p>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50 my-5" />
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-3.5 uppercase tracking-wider">
+                  Got some confusion? Ask the AI
+                </p>
+                <button
+                  onClick={onOpenCoach}
+                  className="px-6 py-3 bg-gradient-to-tr from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl transition-all shadow-[4px_4px_12px_rgba(163,177,198,0.35),_-4px_-4px_12px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_12px_rgba(0,0,0,0.45),_-4px_-4px_12px_rgba(255,255,255,0.02)]"
+                >
+                  Chat with AI
+                </button>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center">
-            <div className="max-w-md">
-              <ChatBubbleLeftRightIcon className="w-20 h-20 text-slate-700 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-slate-300 mb-2">
-                Choose a learning partner
-              </h2>
-              <p className="text-slate-400 mb-6">
-                Select a conversation to coordinate sessions and share knowledge
-              </p>
-              <p className="text-sm text-slate-500 mb-3">
-                Got some confusion? Ask the AI
-              </p>
-              <button
-                onClick={onOpenCoach}
-                className="px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg transition-colors shadow-md"
-              >
-                Chat with AI
-              </button>
-            </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
     </div>
   );
 };

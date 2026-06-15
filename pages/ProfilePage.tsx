@@ -3,6 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import type { Skill, User, Rating, TokenTransaction } from "../types";
 import SkillTag from "../components/SkillTag";
 import DraggableTestimonials from "../components/DraggableTestimonials";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -12,7 +13,9 @@ import {
   ClockIcon,
   UserCircleIcon,
   ChartBarIcon,
-  FunnelIcon,
+  CheckCircleIcon,
+  CurrencyDollarIcon,
+  ShieldCheckIcon,
 } from "../components/icons";
 
 interface ProfilePageProps {
@@ -37,8 +40,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
 
   if (!currentUser) return null;
 
-  // --- Derived Data & Stats ---
-
   const myRatings = useMemo(() => {
     return ratings
       .filter((r) => r.ratedId === currentUser.id)
@@ -56,14 +57,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         ).toFixed(1)
       : "New";
 
-  const positiveReviewsPct =
-    myRatings.length > 0
-      ? Math.round(
-          (myRatings.filter((r) => r.stars >= 4).length / myRatings.length) *
-            100,
-        )
-      : 100;
-
   const myTransactions = useMemo(() => {
     return tokenTransactions
       .filter((t) => t.userId === currentUser.id)
@@ -79,8 +72,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     .filter((t) => t.type === "earned")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  // Mock/Estimated Stats
-  const sessionsCompleted = Math.floor(myRatings.length * 1.5) || 0; // Estimation
+  const sessionsCompleted = Math.floor(myRatings.length * 1.5) || 0;
   const sessionsTaught = Math.floor(sessionsCompleted * 0.7);
   const sessionsLearned = sessionsCompleted - sessionsTaught;
 
@@ -97,379 +89,435 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
       t.timestamp.getMonth() === new Date().getMonth(),
   ).length;
 
-  // --- Render Helpers ---
+  const swapperBadge = useMemo(() => {
+    if (myRatings.length >= 10 && parseFloat(averageRating) >= 4.0) {
+      return "Top Rated Mentor";
+    } else if (myRatings.length >= 5) {
+      return "Expert Swapper";
+    }
+    return "Verified Swapper";
+  }, [myRatings.length, averageRating]);
 
   const renderStatCard = (
     label: string,
     value: string | number,
     subtext?: string,
-    highlight?: boolean,
-  ) => (
-    <div
-      className={`p-4 rounded-xl border ${highlight ? "bg-sky-500/10 border-sky-500/30" : "bg-surface border-border"} flex flex-col`}
-    >
-      <span className="text-2xl font-bold text-text-primary mb-1">{value}</span>
-      <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-        {label}
-      </span>
-      {subtext && (
-        <span className="text-xs text-text-muted mt-2">{subtext}</span>
-      )}
-    </div>
-  );
+    icon?: React.ReactNode,
+    colorClass: string = "from-sky-500/10 to-indigo-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400",
+  ) => {
+    const textColors = colorClass.split(" ");
+    const textColor = textColors[textColors.length - 1];
+    
+    return (
+      <motion.div
+        whileHover={{ y: -2, scale: 1.02 }}
+        className="p-4 rounded-[20px] border border-slate-200/10 dark:border-slate-800/10 bg-background flex flex-col justify-between shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)] group relative overflow-hidden"
+      >
+        <div className="flex items-center justify-between mb-2.5 relative z-10">
+          <span className="text-[9px] text-text-muted uppercase tracking-widest font-black">
+            {label}
+          </span>
+          {icon && (
+            <div className={`p-1.5 rounded-lg bg-background border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_4px_rgba(163,177,198,0.2),_-2px_-2px_4px_rgba(255,255,255,0.85)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.45)] ${textColor}`}>
+              {icon}
+            </div>
+          )}
+        </div>
+        <div className="relative z-10">
+          <span className="text-2xl font-black text-text-primary tracking-tight">{value}</span>
+          {subtext && (
+            <span className="text-[9px] text-text-muted mt-1 block font-bold uppercase tracking-wider">{subtext}</span>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 pb-20">
-      {/* --- 1. Header Section --- */}
-      <div className="relative mb-16">
-        {/* Background Decor */}
-        <div className="absolute top-0 right-0 w-full h-64 bg-gradient-to-l from-sky-500/10 to-transparent rounded-3xl -z-10 blur-3xl opacity-50 pointer-events-none" />
+    <div className="w-full bg-transparent transition-colors duration-300 relative">
+      <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-sky-500/5 dark:bg-sky-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-        <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden">
-          {/* Background Glow */}
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-sky-500/5 to-transparent -z-10" />
+      <div className="container mx-auto max-w-7xl py-6 min-h-screen">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="pb-8 border-b border-slate-200/40 dark:border-slate-800/40 mb-10"
+        >
+          <h1 className="text-3xl sm:text-4.5xl font-black tracking-tight text-slate-900 dark:text-white">
+            My Profile
+          </h1>
+          <p className="text-xs sm:text-sm text-text-muted mt-1.5 font-bold">
+            Manage your personal profile, credentials, analytics, and transaction log.
+          </p>
+        </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            {/* Left: Identity (7 cols) */}
-            <div className="lg:col-span-7 flex flex-col md:flex-row items-start gap-8">
-              <div className="relative flex-shrink-0">
-                <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-br from-sky-400 to-indigo-500 shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Left Column - Sidebar (User Details, Skills, Reputation) */}
+          <div className="lg:col-span-4 space-y-8">
+            {/* User Profile Card */}
+            <div className="p-6 rounded-[28px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)] flex flex-col items-center text-center">
+              <div className="relative mb-5">
+                <motion.div 
+                  whileHover={{ scale: 1.03 }}
+                  className="w-32 h-32 rounded-full p-2 bg-background border border-slate-200/10 dark:border-slate-800/10 shadow-[inset_4px_4px_8px_rgba(163,177,198,0.4),_inset_-4px_-4px_8px_rgba(255,255,255,0.85)] dark:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.6),_inset_-4px_-4px_8px_rgba(255,255,255,0.03)]"
+                >
                   <img
                     src={
                       currentUser.avatarUrl ||
                       `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`
                     }
                     alt={currentUser.name}
-                    className="w-full h-full rounded-full bg-surface object-cover border-4 border-surface"
+                    className="w-full h-full rounded-full object-cover border border-slate-200/10 dark:border-slate-800/10"
                   />
-                </div>
-                <button
+                </motion.div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={openEditModal}
-                  className="absolute bottom-2 right-2 p-2 bg-surface text-sky-500 border border-border rounded-full hover:bg-surface-hover hover:text-sky-600 transition-all shadow-lg"
+                  className="absolute bottom-1 right-1 p-2 bg-background dark:bg-[#121a2e] text-sky-500 border border-slate-200/10 dark:border-slate-800/10 rounded-full hover:text-sky-600 shadow-[2px_2px_5px_rgba(163,177,198,0.3),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.4),_-2px_-2px_5px_rgba(255,255,255,0.02)] active:scale-95 transition-all"
                   title="Edit Profile"
                 >
-                  <PencilIcon className="w-4 h-4" />
-                </button>
+                  <PencilIcon className="w-3.5 h-3.5" />
+                </motion.button>
               </div>
 
-              <div className="flex-1 space-y-4 pt-2">
-                <div>
-                  <h1 className="text-4xl lg:text-5xl font-bold text-text-primary tracking-tight mb-3">
-                    {currentUser.name}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-4 text-text-secondary">
-                    <div className="flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                      <span className="text-amber-500 text-lg">★</span>
-                      <span className="font-bold text-amber-600 dark:text-amber-400">
-                        {averageRating}
-                      </span>
-                      <span className="text-text-muted text-xs ml-1">
-                        ({myRatings.length})
-                      </span>
-                    </div>
-                    <span className="hidden md:inline text-text-muted">•</span>
-                    <span className="text-text-muted">
-                      {currentUser.email || "Digital Creator"}
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-lg text-text-secondary leading-relaxed max-w-xl">
-                  {currentUser.bio || "No bio yet."}
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  {currentUser.isAdmin && (
-                    <span className="px-2 py-1 bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 text-xs rounded border border-indigo-500/30 uppercase font-bold tracking-wider">
-                      Admin
-                    </span>
-                  )}
-                </div>
+              <h2 className="text-2xl font-black text-text-primary mb-1 tracking-tight">
+                {currentUser.name}
+              </h2>
+              <div className="text-[11px] text-text-muted font-black uppercase tracking-wider mb-4">
+                {currentUser.email}
               </div>
-            </div>
 
-            {/* Right: Stats Strip (5 cols) */}
-            <div className="lg:col-span-5 h-full flex flex-col justify-center lg:border-l lg:border-border lg:pl-12">
-              <div className="flex items-center gap-2 mb-8 text-text-muted text-sm font-semibold uppercase tracking-wider">
-                <ChartBarIcon className="w-4 h-4" /> Performance
+              <div className="flex items-center gap-1.5 bg-background px-4 py-1.5 rounded-full border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_5px_rgba(163,177,198,0.25),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.4),_-2px_-2px_5px_rgba(255,255,255,0.02)] mb-4">
+                <span className="text-amber-500 text-sm">★</span>
+                <span className="font-black text-amber-600 dark:text-amber-400 text-xs">
+                  {averageRating}
+                </span>
+                <span className="text-text-muted text-[10px] ml-1 font-bold">
+                  ({myRatings.length} reviews)
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                {renderStatCard(
-                  "Lifetime Earned",
-                  lifetimeEarnings,
-                  "Tokens",
-                  true,
+
+              <p className="text-xs text-text-secondary leading-relaxed mb-6 font-semibold max-w-xs">
+                {currentUser.bio || "No bio yet."}
+              </p>
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                <span className="px-3.5 py-1.5 bg-background text-sky-600 dark:text-sky-400 text-[9px] rounded-full border border-slate-200/10 dark:border-slate-800/10 uppercase font-black tracking-widest shadow-[2px_2px_5px_rgba(163,177,198,0.25),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.4),_-2px_-2px_5px_rgba(255,255,255,0.02)]">
+                  {swapperBadge}
+                </span>
+                {currentUser.isAdmin && (
+                  <span className="px-3.5 py-1.5 bg-background text-indigo-600 dark:text-indigo-400 text-[9px] rounded-full border border-slate-200/10 dark:border-slate-800/10 uppercase font-black tracking-widest shadow-[2px_2px_5px_rgba(163,177,198,0.25),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.4),_-2px_-2px_5px_rgba(255,255,255,0.02)]">
+                    Admin
+                  </span>
                 )}
-                {renderStatCard("Sessions", sessionsCompleted, "Completed")}
-
-                {/* Reviews Card */}
-                <div className="p-4 rounded-xl border bg-surface border-border flex flex-col">
-                  <span className="text-2xl font-bold text-text-primary mb-1">
-                    {myRatings.length}
-                  </span>
-                  <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                    Reviews
-                  </span>
-                  <span className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1">
-                    ★ {averageRating} Rating
-                  </span>
-                </div>
-
-                {renderStatCard("Response Rate", "98%", "Very Responsive")}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* --- Divider --- */}
-
-      {/* --- 7. Activity Summary (New) --- */}
-      <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden mb-12">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-emerald-500/5 to-transparent -z-10" />
-        <h3 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
-          <SparklesIcon className="w-5 h-5 text-sky-500" />
-          Monthly Activity
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 p-6 rounded-2xl">
-            <div className="text-emerald-500 font-bold text-3xl mb-1">
-              +{currentMonthEarned}
-            </div>
-            <div className="text-text-muted text-sm font-medium">
-              Tokens Earned this month
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/5 border border-sky-500/20 p-6 rounded-2xl">
-            <div className="text-sky-500 font-bold text-3xl mb-1">
-              {currentMonthSessions}
-            </div>
-            <div className="text-text-muted text-sm font-medium">
-              Sessions Completed
-            </div>
-          </div>
-          <div className="bg-surface border border-border p-6 rounded-2xl flex flex-col justify-center">
-            <div className="text-text-primary font-semibold mb-1">Upcoming</div>
-            <div className="text-text-muted text-sm">
-              No sessions scheduled for later today.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- 2. Skills Section --- */}
-      <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden mb-12">
-        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-indigo-500/5 to-transparent -z-10" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {/* Teaching (Dominant) */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-                <AcademicCapIcon className="w-6 h-6 text-sky-500" />
-                Skills I Teach
-              </h3>
-              <span className="text-xs font-mono text-text-muted bg-surface-highlight/50 px-2 py-1 rounded">
-                {currentUser.teaches.length} SKILLS
-              </span>
-            </div>
-            <div className="space-y-3">
-              {currentUser.teaches.map((skill) => (
-                <div
-                  key={skill.id}
-                  className="group relative flex items-center justify-between p-4 bg-surface border border-border hover:border-sky-500/50 rounded-xl transition-all hover:bg-surface-hover"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-500 group-hover:bg-sky-500 group-hover:text-white transition-all">
-                      <AcademicCapIcon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-text-primary">
+            {/* Skills Panel */}
+            <div className="p-6 rounded-[28px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)] space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black text-text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <AcademicCapIcon className="w-4 h-4 text-sky-500" />
+                    Skills I Teach
+                  </h3>
+                  <span className="text-[9px] font-black text-text-secondary bg-background px-2.5 py-1 rounded-full border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_4px_rgba(163,177,198,0.2)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.3)]">
+                    {currentUser.teaches.length}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                  {currentUser.teaches.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="flex items-center justify-between p-3 bg-background border border-slate-200/10 dark:border-slate-800/10 rounded-xl shadow-[2px_2px_4px_rgba(163,177,198,0.15),_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.35)]"
+                    >
+                      <div className="font-bold text-text-primary text-xs truncate">
                         {skill.name}
                       </div>
-                      <div className="text-xs text-sky-500/80 font-medium mt-0.5">
-                        Advanced • 12 Sessions
+                      <span className="text-[8px] text-sky-500 font-black uppercase tracking-wider">
+                        Teacher
+                      </span>
+                    </div>
+                  ))}
+                  {currentUser.teaches.length === 0 && (
+                    <div className="text-text-muted text-[10px] font-bold py-3 text-center">
+                      No teaching skills listed.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200/10 dark:border-slate-800/10 pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black text-text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                    <UserCircleIcon className="w-4 h-4 text-indigo-500" />
+                    Skills to Learn
+                  </h3>
+                  <span className="text-[9px] font-black text-text-secondary bg-background px-2.5 py-1 rounded-full border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_4px_rgba(163,177,198,0.2)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.3)]">
+                    {currentUser.learns.length}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                  {currentUser.learns.map((skill) => (
+                    <SkillTag key={skill.id} skill={skill} variant="learn" />
+                  ))}
+                  {currentUser.learns.length === 0 && (
+                    <div className="text-text-muted text-[10px] font-bold py-3 text-center w-full">
+                      No learning goals listed.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Reputation Metrics */}
+            <div className="p-6 rounded-[28px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
+              <h3 className="text-xs font-black text-text-primary mb-4 flex items-center gap-1.5 uppercase tracking-wider">
+                <ChartBarIcon className="w-4 h-4 text-indigo-500" />
+                Reputation Metrics
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center bg-background border border-slate-200/10 dark:border-slate-800/10 p-3.5 rounded-xl shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]">
+                  <div className="text-xl font-black text-text-primary mb-1">
+                    {myRatings.length}
+                  </div>
+                  <div className="text-[8px] text-text-muted uppercase tracking-wider font-black">Reviews</div>
+                </div>
+                <div className="text-center bg-background border border-slate-200/10 dark:border-slate-800/10 p-3.5 rounded-xl shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]">
+                  <div className="text-xl font-black text-amber-500 mb-1">
+                    {averageRating}
+                  </div>
+                  <div className="text-[8px] text-text-muted uppercase tracking-wider font-black">Average</div>
+                </div>
+                <div className="text-center bg-background border border-slate-200/10 dark:border-slate-800/10 p-3.5 rounded-xl shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]">
+                  <div className="text-xl font-black text-sky-500 mb-1">
+                    {sessionsTaught}
+                  </div>
+                  <div className="text-[8px] text-text-muted uppercase tracking-wider font-black">Taught</div>
+                </div>
+                <div className="text-center bg-background border border-slate-200/10 dark:border-slate-800/10 p-3.5 rounded-xl shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]">
+                  <div className="text-xl font-black text-indigo-500 mb-1">
+                    {sessionsLearned}
+                  </div>
+                  <div className="text-[8px] text-text-muted uppercase tracking-wider font-black">Learned</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Primary Content Panel */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* Analytics Dashboard Grid */}
+            <div className="p-6 lg:p-8 rounded-[32px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
+              <h3 className="text-sm font-black text-text-primary mb-6 flex items-center gap-1.5 uppercase tracking-wider">
+                <SparklesIcon className="w-4 h-4 text-sky-500" />
+                Analytics Overview
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                {/* Performance Grid */}
+                <div className="md:col-span-7 space-y-3.5">
+                  <div className="text-[9px] text-text-muted font-black uppercase tracking-widest mb-0.5">
+                    Performance Summary
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {renderStatCard(
+                      "Lifetime Earned",
+                      lifetimeEarnings,
+                      "Tokens",
+                      <CurrencyDollarIcon className="w-4 h-4" />,
+                      "from-amber-500/20 to-yellow-500/10 border-amber-500/30 text-amber-500"
+                    )}
+                    {renderStatCard(
+                      "Sessions",
+                      sessionsCompleted,
+                      "Completed",
+                      <CheckCircleIcon className="w-4 h-4" />,
+                      "from-sky-500/20 to-blue-500/10 border-sky-500/30 text-sky-500"
+                    )}
+                    {renderStatCard(
+                      "Reviews",
+                      myRatings.length,
+                      `★ ${averageRating} Avg`,
+                      <SparklesIcon className="w-4 h-4" />,
+                      "from-purple-500/20 to-pink-500/10 border-purple-500/30 text-purple-500"
+                    )}
+                    {renderStatCard(
+                      "Response Rate",
+                      "98%",
+                      "Very Responsive",
+                      <ShieldCheckIcon className="w-4 h-4" />,
+                      "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-500"
+                    )}
+                  </div>
+                </div>
+
+                {/* Monthly Activity Stack */}
+                <div className="md:col-span-5 space-y-3.5">
+                  <div className="text-[9px] text-text-muted font-black uppercase tracking-widest mb-0.5">
+                    Active Month
+                  </div>
+                  <div className="space-y-4">
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="bg-background border border-slate-200/10 dark:border-slate-800/10 p-4 rounded-[20px] flex items-center gap-4 shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]"
+                    >
+                      <div className="p-2 bg-background rounded-lg border border-slate-200/10 dark:border-slate-800/10 text-emerald-600 dark:text-emerald-400 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.1)]">
+                        <ArrowUpIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-emerald-500 font-black text-xl tracking-tight">
+                          +{currentMonthEarned}
+                        </div>
+                        <div className="text-text-muted text-[8px] font-black uppercase tracking-wider">
+                          Tokens Earned This Month
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="bg-background border border-slate-200/10 dark:border-slate-800/10 p-4 rounded-[20px] flex items-center gap-4 shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.35)]"
+                    >
+                      <div className="p-2 bg-background rounded-lg border border-slate-200/10 dark:border-slate-800/10 text-sky-600 dark:text-sky-400 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.1)]">
+                        <CheckCircleIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sky-500 font-black text-xl tracking-tight">
+                          {currentMonthSessions}
+                        </div>
+                        <div className="text-text-muted text-[8px] font-black uppercase tracking-wider">
+                          Sessions Completed
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    <div className="bg-background border border-slate-200/10 dark:border-slate-800/10 p-3 rounded-[20px] flex flex-col justify-center shadow-[inset_2px_2px_4px_rgba(163,177,198,0.2),_inset_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.55)]">
+                      <div className="text-text-primary font-bold text-[9px] uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <ClockIcon className="w-3 h-3 text-indigo-500" /> Upcoming status
+                      </div>
+                      <div className="text-text-muted text-[8px] font-semibold">
+                        No sessions scheduled for later today.
                       </div>
                     </div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    {/* Edit or Manage icon could go here */}
-                  </div>
-                </div>
-              ))}
-              {currentUser.teaches.length === 0 && (
-                <div className="text-text-muted italic p-4 border border-dashed border-border rounded-xl">
-                  No teaching skills listed yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Learning */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-semibold text-text-secondary flex items-center gap-2">
-                <UserCircleIcon className="w-6 h-6 text-text-muted" />
-                Skills I Want to Learn
-              </h3>
-              <span className="text-xs font-mono text-text-muted bg-surface-highlight/50 px-2 py-1 rounded">
-                {currentUser.learns.length} SKILLS
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {currentUser.learns.map((skill) => (
-                <SkillTag key={skill.id} skill={skill} variant="learn" />
-              ))}
-              {currentUser.learns.length === 0 && (
-                <div className="text-text-muted italic w-full p-4">
-                  No learning goals listed yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- 5. Reputation Metrics --- */}
-      <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden mb-12">
-        <div className="absolute top-0 right-0 p-32 bg-sky-500/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
-
-        <h3 className="text-xl font-semibold text-text-primary mb-8 flex items-center gap-2">
-          <ChartBarIcon className="w-5 h-5 text-indigo-500" />
-          Reputation Impact
-        </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="text-center">
-            <div className="text-4xl font-bold text-text-primary mb-2">
-              {myRatings.length}
-            </div>
-            <div className="text-sm text-text-muted">Total Reviews</div>
-          </div>
-          <div className="text-center border-l border-border">
-            <div className="text-4xl font-bold text-amber-500 mb-2">
-              {averageRating}
-            </div>
-            <div className="text-sm text-text-muted">Average Rating</div>
-          </div>
-          <div className="text-center border-l border-border">
-            <div className="text-4xl font-bold text-sky-500 mb-2">
-              {sessionsTaught}
-            </div>
-            <div className="text-sm text-text-muted">Sessions Taught</div>
-          </div>
-          <div className="text-center border-l border-border">
-            <div className="text-4xl font-bold text-indigo-500 mb-2">
-              {sessionsLearned}
-            </div>
-            <div className="text-sm text-text-muted">Sessions Learned</div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- 3. Token History --- */}
-      <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden mb-12">
-        <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-emerald-500/5 to-transparent -z-10" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-          <div className="flex items-baseline gap-4">
-            <h3 className="text-2xl font-semibold text-text-primary">
-              Token History
-            </h3>
-            <span className="text-sm font-mono text-text-muted">
-              Balance:{" "}
-              <span className="text-emerald-500 font-bold">
-                {currentUser.tokens}
-              </span>
-            </span>
-          </div>
-          <div className="inline-flex bg-surface-highlight rounded-lg p-1 border border-border">
-            {(["all", "earned", "spent"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setTokenFilter(filter)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  tokenFilter === filter
-                    ? "bg-slate-700 text-white shadow-sm dark:bg-slate-600"
-                    : "text-text-muted hover:text-text-primary"
-                } capitalize`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-          {filteredTransactions.length > 0 ? (
-            filteredTransactions.map((transaction, idx) => (
-              <div
-                key={transaction.id}
-                className="group flex items-center gap-6 p-4 rounded-xl hover:bg-surface-hover transition-colors border border-transparent hover:border-border"
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${transaction.type === "earned" ? "bg-emerald-500" : "bg-red-500"}`}
-                />
-
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-highlight border border-border text-text-muted group-hover:scale-105 transition-transform">
-                  {transaction.type === "earned" ? (
-                    <ArrowUpIcon className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <ArrowDownIcon className="w-5 h-5 text-red-500" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-text-primary truncate">
-                    {transaction.description}
-                  </div>
-                  <div className="text-xs text-text-muted mt-0.5 flex items-center gap-2">
-                    <ClockIcon className="w-3 h-3" />
-                    {transaction.timestamp.toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    <span className="w-1 h-1 rounded-full bg-border" />
-                    {transaction.timestamp.toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-
-                <div
-                  className={`text-right font-mono font-bold text-lg ${transaction.type === "earned" ? "text-emerald-500" : "text-text-muted"}`}
-                >
-                  {transaction.type === "earned" ? "+" : "-"}
-                  {transaction.amount}
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-16 bg-surface/30 rounded-2xl border border-dashed border-border">
-              <p className="text-text-muted">
-                No transactions found for this filter.
-              </p>
             </div>
-          )}
+
+            {/* Token History Panel */}
+            <div className="p-6 lg:p-8 rounded-[32px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div className="flex items-baseline gap-4">
+                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider">
+                    Token History
+                  </h3>
+                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-background px-3 py-1 rounded-full border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_4px_rgba(163,177,198,0.15),_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.35)] uppercase tracking-wider">
+                    Balance: {currentUser.tokens} S
+                  </span>
+                </div>
+                
+                <div className="inline-flex bg-background rounded-xl p-1 border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_4px_rgba(163,177,198,0.15),_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.35)]">
+                  {(["all", "earned", "spent"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setTokenFilter(filter)}
+                      className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
+                        tokenFilter === filter
+                          ? "bg-background text-sky-600 dark:text-sky-400 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.1)] border border-slate-200/10 dark:border-slate-800/10"
+                          : "text-text-muted hover:text-text-primary"
+                      } uppercase tracking-wider`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+                <AnimatePresence mode="popLayout">
+                  {filteredTransactions.length > 0 ? (
+                    filteredTransactions.map((transaction) => (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        key={transaction.id}
+                        className="group flex items-center gap-4 p-3 bg-background border border-slate-200/10 dark:border-slate-800/10 rounded-xl shadow-[2px_2px_4px_rgba(163,177,198,0.1),_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.35)]"
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${transaction.type === "earned" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"}`}
+                        />
+
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-background border border-slate-200/10 dark:border-slate-800/10 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.1)] ${
+                          transaction.type === "earned" ? "text-emerald-500" : "text-rose-500"
+                        }`}>
+                          {transaction.type === "earned" ? (
+                            <ArrowUpIcon className="w-4 h-4" />
+                          ) : (
+                            <ArrowDownIcon className="w-4 h-4" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-text-primary text-xs truncate">
+                            {transaction.description}
+                          </div>
+                          <div className="text-[9px] text-text-muted mt-0.5 flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                            <ClockIcon className="w-3 h-3 text-text-muted/80" />
+                            {transaction.timestamp.toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                            <span className="w-0.5 h-0.5 rounded-full bg-border" />
+                            {transaction.timestamp.toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`text-right font-mono font-extrabold text-xs ${transaction.type === "earned" ? "text-emerald-500" : "text-rose-500"}`}
+                        >
+                          {transaction.type === "earned" ? "+" : "-"}
+                          {transaction.amount}
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 bg-background rounded-2xl border border-dashed border-slate-200/20 dark:border-slate-800/20 shadow-inner">
+                      <p className="text-text-muted text-[9px] font-black uppercase tracking-wider">
+                        No transactions found.
+                      </p>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Testimonials Panel */}
+            {myRatings.length > 0 && (
+              <div className="space-y-6 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider">
+                    What Others Say
+                  </h3>
+                  <span className="text-[9px] font-black text-text-muted uppercase tracking-widest">
+                    Latest reviews
+                  </span>
+                </div>
+                <DraggableTestimonials testimonials={myRatings} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* --- 4. Testimonials --- */}
-      {myRatings.length > 0 && (
-        <div className="bg-surface backdrop-blur-md rounded-3xl border border-border p-8 lg:p-12 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-amber-500/5 to-transparent -z-10" />
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-2xl font-semibold text-text-primary">
-              What Others Say
-            </h3>
-            <span className="text-sm text-text-muted">
-              Latest from your sessions
-            </span>
-          </div>
-          <DraggableTestimonials testimonials={myRatings} />
-        </div>
-      )}
     </div>
   );
 };
 
 export default ProfilePage;
+

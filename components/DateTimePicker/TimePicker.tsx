@@ -66,34 +66,34 @@ const Clock: React.FC<TimePickerProps> = ({ selectedTime, onSelect }) => {
   const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
   return (
-    <div className="w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col items-center elevation-3 select-none">
+    <div className="w-full max-w-[288px] bg-background dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-5 flex flex-col items-center select-none">
       {/* Time Display */}
-      <div className="flex items-center justify-center p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-800 mb-8 w-full shadow-inner gap-3">
-        <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-1">
+      <div className="flex items-center justify-center p-3 bg-slate-100/50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 mb-6 w-full shadow-inner gap-3">
+        <div className="flex items-center bg-background dark:bg-slate-900 rounded-xl border border-slate-200/50 dark:border-slate-850 p-1">
           <button
             onClick={() => setMode("hours")}
-            className={`px-3 py-2 text-3xl font-bold rounded-lg transition-all ${mode === "hours" ? "bg-sky-500 text-white shadow-md" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+            className={`px-3 py-2 text-3xl font-bold rounded-lg transition-all ${mode === "hours" ? "bg-sky-500 text-white shadow-md" : "text-text-muted hover:text-text-primary hover:bg-slate-200/30 dark:hover:bg-slate-800/30"}`}
           >
             {String(tempHours).padStart(2, "0")}
           </button>
-          <span className="text-3xl font-bold text-slate-300 dark:text-slate-600 mx-1">
+          <span className="text-3xl font-bold text-text-muted mx-1">
             :
           </span>
           <button
             onClick={() => setMode("minutes")}
-            className={`px-3 py-2 text-3xl font-bold rounded-lg transition-all ${mode === "minutes" ? "bg-sky-500 text-white shadow-md" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+            className={`px-3 py-2 text-3xl font-bold rounded-lg transition-all ${mode === "minutes" ? "bg-sky-500 text-white shadow-md" : "text-text-muted hover:text-text-primary hover:bg-slate-200/30 dark:hover:bg-slate-800/30"}`}
           >
             {String(tempMinutes).padStart(2, "0")}
           </button>
         </div>
 
-        <div className="flex flex-col bg-slate-200/50 dark:bg-slate-700/50 rounded-xl p-1 gap-1">
+        <div className="flex flex-col bg-slate-200/30 dark:bg-slate-800/30 rounded-xl p-1 gap-1">
           <button
             onClick={() => {
               setPeriod("AM");
               updateTime(tempHours, tempMinutes, "AM");
             }}
-            className={`text-[10px] font-black px-2 py-1.5 rounded-lg transition-all uppercase tracking-tighter ${period === "AM" ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}
+            className={`text-[10px] font-black px-2 py-1.5 rounded-lg transition-all uppercase tracking-tighter ${period === "AM" ? "bg-background dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm" : "text-text-muted"}`}
           >
             AM
           </button>
@@ -102,7 +102,7 @@ const Clock: React.FC<TimePickerProps> = ({ selectedTime, onSelect }) => {
               setPeriod("PM");
               updateTime(tempHours, tempMinutes, "PM");
             }}
-            className={`text-[10px] font-black px-2 py-1.5 rounded-lg transition-all uppercase tracking-tighter ${period === "PM" ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}
+            className={`text-[10px] font-black px-2 py-1.5 rounded-lg transition-all uppercase tracking-tighter ${period === "PM" ? "bg-background dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm" : "text-text-muted"}`}
           >
             PM
           </button>
@@ -113,27 +113,27 @@ const Clock: React.FC<TimePickerProps> = ({ selectedTime, onSelect }) => {
       <div
         ref={clockRef}
         onClick={handleDialClick}
-        className="relative w-52 h-52 bg-slate-50 dark:bg-slate-800/50 rounded-full border border-slate-100 dark:border-slate-800/80 shadow-inner flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden"
+        className="relative w-48 h-48 bg-slate-100/50 dark:bg-slate-950/50 rounded-full border border-slate-200 dark:border-slate-800 shadow-inner flex items-center justify-center cursor-pointer active:scale-98 transition-transform overflow-hidden"
       >
         {/* Center Dot */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-sky-500 rounded-full z-30 shadow-sm shadow-sky-500/50" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-sky-500 rounded-full z-30 shadow-sm" />
 
         {/* Selector Arm */}
         <div
           className="absolute top-1/2 left-1/2 w-0.5 bg-sky-500 z-10 transition-transform duration-300"
           style={{
-            height: "80px",
+            height: "72px",
             transformOrigin: "bottom center",
             transform: `translateX(-50%) translateY(-100%) rotate(${mode === "hours" ? (tempHours % 12) * 30 : tempMinutes * 6}deg)`,
           }}
         >
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full border-2 border-sky-500 bg-sky-500/20 shadow-md shadow-sky-500/20" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-sky-500 bg-sky-500/20 shadow-md shadow-sky-500/20" />
         </div>
 
         {/* Numbers/Dots */}
         {(mode === "hours" ? hours : minutes).map((val, i) => {
           const angle = (i / 12) * 360 - 90;
-          const radius = 80;
+          const radius = 72;
           const x = radius * Math.cos((angle * Math.PI) / 180);
           const y = radius * Math.sin((angle * Math.PI) / 180);
           const isSelected =
@@ -149,8 +149,8 @@ const Clock: React.FC<TimePickerProps> = ({ selectedTime, onSelect }) => {
               className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
             >
               <div
-                className={`w-8 h-8 flex items-center justify-center text-sm font-bold transition-all rounded-full
-                  ${isSelected ? "text-white" : "text-slate-500 dark:text-slate-400"}
+                className={`w-7 h-7 flex items-center justify-center text-xs font-black transition-all rounded-full
+                  ${isSelected ? "text-white" : "text-text-muted"}
                 `}
               >
                 {val}
@@ -163,10 +163,10 @@ const Clock: React.FC<TimePickerProps> = ({ selectedTime, onSelect }) => {
         {Array.from({ length: 60 }).map((_, i) => (
           <div
             key={i}
-            className={`absolute top-1/2 left-1/2 w-0.5 origin-bottom ${i % 5 === 0 ? "h-2 bg-slate-300 dark:bg-slate-700" : "h-1 bg-slate-300/30 dark:bg-slate-700/30"}`}
+            className={`absolute top-1/2 left-1/2 w-0.5 origin-bottom ${i % 5 === 0 ? "h-2 bg-slate-350 dark:bg-slate-700" : "h-1 bg-slate-300/30 dark:bg-slate-700/30"}`}
             style={{
               bottom: "50%",
-              transform: `translateX(-50%) rotate(${i * 6}deg) translateY(-94px)`,
+              transform: `translateX(-50%) rotate(${i * 6}deg) translateY(-88px)`,
             }}
           />
         ))}

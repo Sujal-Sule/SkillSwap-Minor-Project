@@ -48,7 +48,7 @@ export interface Session {
     skill: Skill;
     scheduledTime: Date;
     startedAt?: Date;
-    status: 'proposed' | 'scheduled' | 'completed' | 'cancelled' | 'declined' | 'in_progress';
+    status: 'proposed' | 'scheduled' | 'completed' | 'cancelled' | 'declined' | 'active';
     studentHasRated?: boolean;
     teacherHasRated?: boolean;
     duration: number; // in minutes

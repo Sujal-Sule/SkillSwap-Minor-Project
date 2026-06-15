@@ -805,21 +805,21 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   }
 
   return (
-    <div className="w-full h-screen bg-slate-950 text-white flex flex-col">
-      <header className="p-4 flex justify-between items-center bg-slate-950/50 border-b border-slate-800 flex-shrink-0">
+    <div className="w-full h-screen bg-background text-text-primary flex flex-col transition-colors duration-300">
+      <header className="p-4 flex justify-between items-center bg-background/50 border-b border-slate-200/10 dark:border-slate-800/10 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <PlayCircleIcon className="w-8 h-8 text-sky-400" />
-          <h1 className="text-xl font-bold">
-            Live Session: <span className="text-slate-300">{session.skill.name}</span>
+          <PlayCircleIcon className="w-8 h-8 text-sky-500" />
+          <h1 className="text-xl font-black uppercase tracking-wider">
+            Live Session: <span className="text-sky-500">{session.skill.name}</span>
           </h1>
         </div>
-        <div className="flex items-center gap-6 text-slate-300 font-mono">
+        <div className="flex items-center gap-6 text-text-secondary font-mono text-sm font-semibold">
           <div className="flex items-center gap-2">
-            <ClockIcon className="w-5 h-5" />
+            <ClockIcon className="w-5 h-5 text-sky-500" />
             <span>Time: {formatTime(elapsedTime)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <TokenIcon className="w-5 h-5 text-amber-400" />
+            <TokenIcon className="w-5 h-5 text-amber-500" />
             <span>Cost: 1 Token/Session</span>
           </div>
           {connectionStatus === "connected" && (
@@ -830,20 +830,20 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 flex p-4 gap-4 overflow-hidden">
-        <div className="flex-1 flex flex-col rounded-lg overflow-hidden relative bg-slate-900 border border-slate-800">
+      <main className="flex-1 flex p-4 gap-4 overflow-hidden bg-background">
+        <div className="flex-1 flex flex-col rounded-[32px] overflow-hidden relative bg-slate-50 dark:bg-slate-950 border border-slate-200/10 dark:border-slate-800/10 shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
           {viewMode === "whiteboard" ? (
             <>
-              <div className="absolute inset-0 flex items-center justify-center text-center text-slate-700/20 p-8 z-0 pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center text-center text-text-muted/10 p-8 z-0 pointer-events-none">
                 <div>
-                  <h2 className="text-4xl font-bold">Collaborative Whiteboard</h2>
-                  <p className="mt-4 text-xl">Use the tools to draw, write, and collaborate in real-time.</p>
+                  <h2 className="text-4xl font-black uppercase tracking-widest">Collaborative Whiteboard</h2>
+                  <p className="mt-4 text-xl font-medium">Use the tools to draw, write, and collaborate in real-time.</p>
                 </div>
               </div>
               <Whiteboard sessionId={session.id} />
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-black">
+            <div className="w-full h-full flex items-center justify-center bg-black rounded-[32px]">
               <VideoPlayer
                 stream={isScreenSharing ? localStream : remoteStream}
                 muted={true}
@@ -910,67 +910,67 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
             <div className="flex items-center gap-4">
               <button
                 onClick={toggleAudio}
-                className={`p-4 rounded-full transition-colors ${
+                className={`p-4 rounded-2xl transition-all border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] ${
                   isMicOn
-                    ? "bg-slate-700 hover:bg-slate-600"
-                    : "bg-red-500 hover:bg-red-600"
+                    ? "bg-background text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800"
+                    : "bg-rose-500 text-white hover:bg-rose-600 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)] border-rose-600"
                 }`}
                 title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
               >
                 {isMicOn ? (
-                  <MicrophoneIcon className="w-6 h-6 text-white" />
+                  <MicrophoneIcon className="w-6 h-6 text-text-primary" />
                 ) : (
                   <MicrophoneSlashIcon className="w-6 h-6 text-white" />
                 )}
               </button>
               <button
                 onClick={toggleVideo}
-                className={`p-4 rounded-full transition-colors ${
+                className={`p-4 rounded-2xl transition-all border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] ${
                   isCameraOn
-                    ? "bg-slate-700 hover:bg-slate-600"
-                    : "bg-red-500 hover:bg-red-600"
+                    ? "bg-background text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800"
+                    : "bg-rose-500 text-white hover:bg-rose-600 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)] border-rose-600"
                 }`}
                 title={isCameraOn ? "Stop Camera" : "Start Camera"}
               >
                 {isCameraOn ? (
-                  <VideoCameraIcon className="w-6 h-6 text-white" />
+                  <VideoCameraIcon className="w-6 h-6 text-text-primary" />
                 ) : (
                   <VideoCameraSlashIcon className="w-6 h-6 text-white" />
                 )}
               </button>
               <button
                 onClick={toggleScreenShare}
-                className={`p-4 rounded-full transition-colors ${
+                className={`p-4 rounded-2xl transition-all border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] ${
                   isScreenSharing
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-slate-700 hover:bg-slate-600"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)] border-emerald-600"
+                    : "bg-background text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
                 title={isScreenSharing ? "Stop Sharing" : "Share Screen"}
               >
-                <ArrowUpTrayIcon className="w-6 h-6 text-white" />
+                <ArrowUpTrayIcon className={`w-6 h-6 ${isScreenSharing ? "text-white" : "text-text-primary"}`} />
               </button>
               <button
                 onClick={handleReconnect}
-                className="p-4 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors"
+                className="p-4 rounded-2xl bg-background text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)]"
                 title="Reconnect Video"
               >
-                <ArrowPathIcon className="w-6 h-6 text-white" />
+                <ArrowPathIcon className="w-6 h-6 text-text-primary" />
               </button>
               <button
                 onClick={() => setEffectsActive(!effectsActive)}
-                className={`p-4 rounded-full transition-colors ${
+                className={`p-4 rounded-2xl transition-all border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] ${
                   effectsActive
-                    ? "bg-purple-600 hover:bg-purple-700"
-                    : "bg-slate-700 hover:bg-slate-600"
+                    ? "bg-purple-600 text-white hover:bg-purple-700 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)] border-purple-600"
+                    : "bg-background text-text-primary hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
                 title="Toggle Effects"
               >
-                <SparklesIcon className="w-6 h-6 text-white" />
+                <SparklesIcon className={`w-6 h-6 ${effectsActive ? "text-white" : "text-text-primary"}`} />
               </button>
             </div>
             <button
               onClick={handleEndSession}
-              className="w-full px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg transition-colors"
+              className="w-full px-6 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase tracking-wider rounded-2xl transition-all shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)] border border-rose-600 hover:shadow-lg"
             >
               End Session
             </button>

@@ -32,14 +32,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     videoEl.srcObject = stream;
 
-    // Listen for track additions/removals within the same stream
-    // This handles screen share → camera restore when the stream object stays the same
     const handleTrackChange = () => {
-      // Force the video element to notice the track change by reassigning srcObject
       if (videoEl.srcObject !== stream) {
         videoEl.srcObject = stream;
       }
-      // Trigger play in case the video paused due to track change
       videoEl.play().catch(() => {});
     };
 
@@ -56,7 +52,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div
-      className={`relative rounded-lg overflow-hidden bg-slate-900 w-full aspect-video group border ${isFocused ? "border-sky-500 shadow-lg shadow-sky-500/30" : "border-slate-700"}`}
+      className={`relative rounded-3xl overflow-hidden bg-background w-full aspect-video group border transition-all ${isFocused ? "border-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.3)]" : "border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)]"}`}
     >
       <video
         ref={videoRef}
@@ -71,22 +67,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }}
       />
 
-      {/* No stream placeholder */}
       {!stream && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-950">
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center mx-auto mb-2">
-              <span className="text-2xl text-slate-400">
+            <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center mx-auto mb-2 border border-slate-200/10 dark:border-slate-800/10 shadow-[2px_2px_5px_rgba(163,177,198,0.15),_-2px_-2px_5px_rgba(255,255,255,0.85)] dark:shadow-[2px_2px_5px_rgba(0,0,0,0.45)]">
+              <span className="text-lg font-black text-text-primary">
                 {label.charAt(0).toUpperCase()}
               </span>
             </div>
-            <p className="text-slate-400 text-sm">{label}</p>
+            <p className="text-text-muted text-xs font-bold uppercase tracking-wider">{label}</p>
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center">
-        <span className="text-white text-xs font-medium truncate max-w-[70%]">
+      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex justify-between items-center">
+        <span className="text-white text-xs font-bold truncate max-w-[70%]">
           {label}
         </span>
         <div

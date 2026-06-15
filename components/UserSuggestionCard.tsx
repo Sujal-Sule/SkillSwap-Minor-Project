@@ -16,30 +16,36 @@ const UserSuggestionCard: React.FC<UserSuggestionCardProps> = ({
   const handleConnect = async () => {
     setIsConnecting(true);
     onConnect(user.id);
-    // Simulate async operation
     setTimeout(() => setIsConnecting(false), 1000);
   };
 
   return (
-    <div className="bg-surface border border-border p-6 rounded-2xl text-center flex flex-col items-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+    <div className="group relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl text-center flex flex-col items-center hover:shadow-md hover:border-slate-200/80 dark:hover:border-slate-700/80 transition-all duration-300">
       <div className="relative mb-4">
         <img
           src={user.avatarUrl}
           alt={user.name}
-          className="w-24 h-24 rounded-full border-2 border-border"
+          className="w-20 h-20 rounded-full border-2 border-slate-100 dark:border-slate-800 object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        {/* Online status indicator */}
-        <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-surface rounded-full"></div>
+        {user.isOnline && (
+          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-[pulse_2s_infinite]"></div>
+        )}
       </div>
-      <p className="font-semibold text-text-primary mb-2 flex-1">{user.name}</p>
+      
+      <p className="font-bold text-slate-850 dark:text-slate-100 text-sm mb-1 line-clamp-1">
+        {user.name}
+      </p>
+      
+      <p className="text-xs text-text-muted mb-4 line-clamp-2 min-h-[2rem] px-2">
+        {user.bio || "No biography added yet."}
+      </p>
 
-      {/* Show shared skills if any */}
       {user.teaches && user.teaches.length > 0 && (
-        <div className="flex flex-wrap gap-1 justify-center mb-4">
+        <div className="flex flex-wrap gap-1 justify-center mb-5">
           {user.teaches.slice(0, 2).map((skill) => (
             <span
               key={skill.id}
-              className="text-xs px-2 py-1 bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-full"
+              className="text-[10px] font-bold px-2 py-0.5 bg-slate-50 dark:bg-slate-800/40 text-slate-650 dark:text-slate-400 border border-slate-100 dark:border-slate-800 rounded-full"
             >
               {skill.name}
             </span>
@@ -50,11 +56,11 @@ const UserSuggestionCard: React.FC<UserSuggestionCardProps> = ({
       <button
         onClick={handleConnect}
         disabled={isConnecting}
-        className="w-full flex items-center justify-center mt-auto bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center mt-auto bg-slate-950 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-750 text-white font-bold py-2 px-3 rounded-xl transition-all duration-200 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
       >
         {isConnecting ? (
           <svg
-            className="animate-spin h-4 w-4 text-white"
+            className="animate-spin h-3.5 w-3.5 text-white"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -75,7 +81,7 @@ const UserSuggestionCard: React.FC<UserSuggestionCardProps> = ({
           </svg>
         ) : (
           <>
-            <PlusIcon className="w-4 h-4 mr-1.5" />
+            <PlusIcon className="w-3.5 h-3.5 mr-1" />
             Connect
           </>
         )}

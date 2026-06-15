@@ -329,8 +329,33 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   const [history, setHistory] = useState<Element[][]>([]); // Undo stack
   const [redoStack, setRedoStack] = useState<Element[][]>([]);
 
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const [tool, setTool] = useState<ToolType>("pen");
-  const [color, setColor] = useState("#FFFFFF");
+  const [color, setColor] = useState(() =>
+    document.documentElement.classList.contains("dark") ? "#FFFFFF" : "#0F172A"
+  );
+
+  useEffect(() => {
+    setColor((prev) => {
+      if (prev === "#FFFFFF" && !isDark) return "#0F172A";
+      if (prev === "#0F172A" && isDark) return "#FFFFFF";
+      return prev;
+    });
+  }, [isDark]);
 
   // Independent sizes for tools
   const [penSize, setPenSize] = useState(5);
@@ -427,6 +452,15 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
     setTextValue("");
   };
 
+  const getAdjustedColor = (c: string) => {
+    if (!isDark) {
+      if (c.toUpperCase() === "#FFFFFF") return "#0F172A";
+    } else {
+      if (c.toUpperCase() === "#0F172A") return "#FFFFFF";
+    }
+    return c;
+  };
+
   // --- Rendering ---
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -447,11 +481,42 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
     ctx.lineJoin = "round";
     ctx.textBaseline = "top"; // Standardize text origin
 
+    // Draw Grid
+    const drawGrid = () => {
+      if (!ctx || !canvas) return;
+      ctx.save();
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.04)";
+      ctx.lineWidth = 1;
+      
+      const gridSize = 40;
+      const startX = Math.floor((-transform.offsetX / transform.scale) / gridSize) * gridSize;
+      const startY = Math.floor((-transform.offsetY / transform.scale) / gridSize) * gridSize;
+      const endX = startX + canvas.width / transform.scale + gridSize * 2;
+      const endY = startY + canvas.height / transform.scale + gridSize * 2;
+
+      for (let x = startX; x < endX; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+        ctx.stroke();
+      }
+      for (let y = startY; y < endY; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    drawGrid();
+
     const drawElement = (el: Element) => {
       ctx.beginPath();
-      ctx.strokeStyle = el.color;
+      const adjustedColor = getAdjustedColor(el.color);
+      ctx.strokeStyle = adjustedColor;
       ctx.lineWidth = el.width;
-      ctx.fillStyle = el.color; // For text
+      ctx.fillStyle = adjustedColor; // For text
 
       if (el.type === "eraser") {
         ctx.globalCompositeOperation = "destination-out";
@@ -521,7 +586,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
     }
 
     ctx.restore();
-  }, [elements, currentElement, transform]);
+  }, [elements, currentElement, transform, isDark]);
 
   // --- Interaction Handlers ---
 
@@ -839,8 +904,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
     return "crosshair";
   };
 
+  const currentColors = isDark ? COLORS : ["#0F172A", ...COLORS.slice(1)];
+
   return (
-    <div className="w-full h-full relative group overflow-hidden">
+    <div className="w-full h-full relative group overflow-hidden bg-background">
       <canvas
         ref={canvasRef}
         className="w-full h-full touch-none"
@@ -868,7 +935,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
           style={{
             top: writingText.y,
             left: writingText.x,
-            color: color,
+            color: getAdjustedColor(color),
             fontSize: `${getFontSize(lineWidth)}px`,
             lineHeight: 1,
             fontFamily: "sans-serif",
@@ -880,64 +947,64 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       )}
 
       {/* Toolbar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-800/95 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-slate-700 flex flex-col gap-3 items-center z-10">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md p-2.5 rounded-[24px] border border-slate-200/10 dark:border-slate-800/10 shadow-[6px_6px_15px_rgba(163,177,198,0.35),_-6px_-6px_15px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_15px_rgba(0,0,0,0.5)] flex flex-col gap-3 items-center z-10">
         {/* Tools */}
         <div className="flex items-center gap-1">
           <button
             onClick={() => setTool("move")}
-            className={`p-2 rounded-xl transition-all ${tool === "move" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "move" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Select & Move"
           >
             <CursorArrowIcon className="w-5 h-5" />
           </button>
-          <div className="w-px h-6 bg-slate-600 mx-1"></div>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
           <button
             onClick={() => setTool("pan")}
-            className={`p-2 rounded-xl transition-all ${tool === "pan" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "pan" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Pan Canvas"
           >
             <HandRaisedIcon className="w-5 h-5" />
           </button>
-          <div className="w-px h-6 bg-slate-600 mx-1"></div>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
           <button
             onClick={() => setTool("pen")}
-            className={`p-2 rounded-xl transition-all ${tool === "pen" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "pen" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Pen"
           >
             <PencilIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => setTool("eraser")}
-            className={`p-2 rounded-xl transition-all ${tool === "eraser" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "eraser" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Eraser"
           >
             <EraserIcon className="w-5 h-5" />
           </button>
-          <div className="w-px h-6 bg-slate-600 mx-1"></div>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
           <button
             onClick={() => setTool("text")}
-            className={`p-2 rounded-xl transition-all ${tool === "text" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "text" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Text"
           >
             <TextIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => setTool("line")}
-            className={`p-2 rounded-xl transition-all ${tool === "line" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "line" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Line"
           >
             <LineIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => setTool("rect")}
-            className={`p-2 rounded-xl transition-all ${tool === "rect" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "rect" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Rectangle"
           >
             <RectIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => setTool("circle")}
-            className={`p-2 rounded-xl transition-all ${tool === "circle" ? "bg-sky-600 text-white shadow-lg" : "text-slate-400 hover:bg-slate-700 hover:text-white"}`}
+            className={`p-2 rounded-xl transition-all ${tool === "circle" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
             title="Circle"
           >
             <CircleIcon className="w-5 h-5" />
@@ -945,14 +1012,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
         </div>
 
         {/* Second Row: Colors, Size & Actions */}
-        <div className="flex items-center gap-4 pt-1 border-t border-slate-700 w-full justify-between px-2">
+        <div className="flex items-center gap-4 pt-2 border-t border-slate-200/10 dark:border-slate-800/10 w-full justify-between px-2">
           {/* Colors */}
           <div className="flex gap-1.5">
-            {COLORS.map((c) => (
+            {currentColors.map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`w-5 h-5 rounded-full border-2 transition-transform ${color === c ? "border-white scale-110" : "border-transparent hover:scale-110"}`}
+                className={`w-5 h-5 rounded-full border border-slate-200/50 dark:border-slate-700/50 transition-transform ${color === c ? "ring-2 ring-sky-500 scale-110" : "hover:scale-110"}`}
                 style={{ backgroundColor: c }}
                 title={c}
               />
@@ -961,7 +1028,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
 
           {/* Stroke Size Slider */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+            <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
               Size
             </span>
             <input
@@ -970,17 +1037,17 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
               max="50"
               value={lineWidth}
               onChange={(e) => handleSizeChange(parseInt(e.target.value))}
-              className="w-20 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500"
+              className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
               title={`Size: ${lineWidth}px`}
             />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 border-l border-slate-700 pl-4">
+          <div className="flex items-center gap-1 border-l border-slate-200/10 dark:border-slate-800/10 pl-4">
             <button
               onClick={undo}
               disabled={history.length === 0}
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
               title="Undo"
             >
               <UndoIcon className="w-4 h-4" />
@@ -988,14 +1055,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
             <button
               onClick={redo}
               disabled={redoStack.length === 0}
-              className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
               title="Redo"
             >
               <RedoIcon className="w-4 h-4" />
             </button>
             <button
               onClick={clearBoard}
-              className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-900/30 hover:text-rose-300 ml-1"
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 ml-1"
               title="Clear Board"
             >
               <TrashIcon className="w-4 h-4" />
@@ -1005,24 +1072,24 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       </div>
 
       {/* Zoom Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-1 bg-slate-800/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700 shadow-xl z-10">
+      <div className="absolute top-4 right-4 flex flex-col gap-1 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] z-10">
         <button
           onClick={zoomIn}
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
+          className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
           title="Zoom In"
         >
           <PlusIcon className="w-5 h-5" />
         </button>
         <button
           onClick={resetZoom}
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
+          className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
           title="Reset Zoom"
         >
           <ArrowPathIcon className="w-5 h-5" />
         </button>
         <button
           onClick={zoomOut}
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white"
+          className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
           title="Zoom Out"
         >
           <MinusIcon className="w-5 h-5" />
@@ -1030,7 +1097,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       </div>
 
       {/* Current Zoom Indicator */}
-      <div className="absolute top-4 left-4 pointer-events-none opacity-50 text-xs text-slate-500 font-mono z-10">
+      <div className="absolute top-4 left-4 pointer-events-none opacity-50 text-xs text-text-muted font-mono z-10">
         {Math.round(transform.scale * 100)}%
       </div>
     </div>

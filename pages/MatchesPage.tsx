@@ -240,118 +240,120 @@ const MatchesPage: React.FC<MatchesPageProps> = ({
     : "Discover Mentors";
 
   return (
-    <div className="pt-0 pb-20 px-6 max-w-[1240px] mx-auto min-h-screen">
-      {/* Page Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-10"
-      >
-        <h1 className="text-3xl md:text-4xl font-bold text-text-primary mb-2 tracking-tight">
-          {pageTitle}
-        </h1>
-        <p className="text-text-muted text-lg">
-          Find the perfect partner to swap skills with.
-        </p>
-      </motion.div>
+    <div className="w-full bg-transparent transition-colors duration-300">
+      <div className="container mx-auto max-w-7xl py-10 px-6 min-h-screen">
+        {/* Page Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="pb-10 border-b border-slate-200/40 dark:border-slate-800/40 mb-10"
+        >
+          <h1 className="text-3xl sm:text-4.5xl font-black tracking-tight text-slate-900 dark:text-white">
+            {pageTitle}
+          </h1>
+          <p className="text-xs sm:text-sm text-text-muted mt-1.5 font-bold">
+            Find the perfect partner to swap skills with.
+          </p>
+        </motion.div>
 
-      {/* Filter Bar */}
-      <MatchFilterBar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
-        onlineStatusFilter={onlineStatusFilter}
-        setOnlineStatusFilter={setOnlineStatusFilter}
-        tokenRangeFilter={tokenRangeFilter}
-        setTokenRangeFilter={setTokenRangeFilter}
-      />
+        {/* Filter Bar */}
+        <MatchFilterBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          onlineStatusFilter={onlineStatusFilter}
+          setOnlineStatusFilter={setOnlineStatusFilter}
+          tokenRangeFilter={tokenRangeFilter}
+          setTokenRangeFilter={setTokenRangeFilter}
+        />
 
-      <AnimatePresence mode="wait">
-        <div className="flex flex-col gap-16 md:gap-20">
-          {/* Top Matches Section */}
-          {topMatches.length > 0 && (
+        <AnimatePresence mode="wait">
+          <div className="flex flex-col gap-16 md:gap-20">
+            {/* Top Matches Section */}
+            {topMatches.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="flex items-center gap-3 mb-8 pl-4 border-l-2 border-amber-500/60 dark:border-amber-500/40">
+                  <SparklesIcon className="w-5 h-5 text-amber-500" />
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider text-sm sm:text-base">
+                    Top Matches For You
+                  </h2>
+                </div>
+                <div className="flex flex-col gap-8">
+                  {topMatches.map(({ user, matchingSkills }) => (
+                    <TopMatchHero
+                      key={user.id}
+                      user={user}
+                      matchingSkills={matchingSkills}
+                      actionButton={getButtonState(user, true)}
+                      onClick={() => setSelectedUser(user)}
+                    />
+                  ))}
+                </div>
+              </motion.section>
+            )}
+
+            {/* All Members Section */}
             <motion.section
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              <div className="flex items-center gap-3 mb-8">
-                <SparklesIcon className="w-6 h-6 text-amber-500" />
-                <h2 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">
-                  Top Matches For You
-                </h2>
-              </div>
-              <div className="flex flex-col gap-8">
-                {topMatches.map(({ user, matchingSkills }) => (
-                  <TopMatchHero
+              {otherMatches.length > 0 && (
+                <div className="mb-8 pl-4 border-l-2 border-sky-500/60 dark:border-sky-500/40">
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider text-sm sm:text-base">
+                    All Members
+                  </h2>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+                {otherMatches.map(({ user, matchingSkills }) => (
+                  <PremiumUserCard
                     key={user.id}
                     user={user}
                     matchingSkills={matchingSkills}
-                    actionButton={getButtonState(user, true)}
+                    actionButton={getButtonState(user, false)}
                     onClick={() => setSelectedUser(user)}
                   />
                 ))}
               </div>
+
+              {topMatches.length === 0 && otherMatches.length === 0 && (
+                <div className="text-center py-20 bg-slate-100/30 dark:bg-slate-900/20 rounded-[28px] border border-dashed border-slate-200 dark:border-slate-800">
+                  <p className="text-text-muted text-lg mb-2">
+                    No matches found.
+                  </p>
+                  <p className="text-text-muted">
+                    Try adjusting your filters or search terms.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCategoryFilter(null);
+                      setSearchTerm("");
+                      setOnlineStatusFilter("all");
+                    }}
+                    className="mt-6 text-sky-500 hover:text-sky-400 font-medium hover:underline"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
             </motion.section>
-          )}
+          </div>
+        </AnimatePresence>
 
-          {/* All Members Section */}
-          <motion.section
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            {otherMatches.length > 0 && (
-              <div className="mb-8 pl-1 border-l-4 border-sky-500/50">
-                <h2 className="text-xl md:text-2xl font-bold text-text-primary pl-3">
-                  All Members
-                </h2>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-              {otherMatches.map(({ user, matchingSkills }) => (
-                <PremiumUserCard
-                  key={user.id}
-                  user={user}
-                  matchingSkills={matchingSkills}
-                  actionButton={getButtonState(user, false)}
-                  onClick={() => setSelectedUser(user)}
-                />
-              ))}
-            </div>
-
-            {topMatches.length === 0 && otherMatches.length === 0 && (
-              <div className="text-center py-20 bg-surface/50 rounded-3xl border border-dashed border-border">
-                <p className="text-text-muted text-lg mb-2">
-                  No matches found.
-                </p>
-                <p className="text-text-muted">
-                  Try adjusting your filters or search terms.
-                </p>
-                <button
-                  onClick={() => {
-                    setCategoryFilter(null);
-                    setSearchTerm("");
-                    setOnlineStatusFilter("all");
-                  }}
-                  className="mt-6 text-sky-500 hover:text-sky-400 font-medium hover:underline"
-                >
-                  Clear all filters
-                </button>
-              </div>
-            )}
-          </motion.section>
-        </div>
-      </AnimatePresence>
-
-      <UserProfileModal
-        isOpen={!!selectedUser}
-        onClose={() => setSelectedUser(null)}
-        user={selectedUser}
-        users={allUsers}
-      />
+        <UserProfileModal
+          isOpen={!!selectedUser}
+          onClose={() => setSelectedUser(null)}
+          user={selectedUser}
+          users={allUsers}
+        />
+      </div>
     </div>
   );
 };

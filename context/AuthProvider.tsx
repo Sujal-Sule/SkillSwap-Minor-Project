@@ -9,10 +9,32 @@ import { signInWithGooglePopup, registerWithEmailAndPassword, loginWithEmailAndP
 
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [currentUser, setCurrentUser] = useState<User | null>(() => {
+        const cached = localStorage.getItem('appUser');
+        if (cached) {
+            try {
+                return JSON.parse(cached);
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    });
+    const [isAdmin, setIsAdmin] = useState(() => {
+        const cachedUser = localStorage.getItem('appUser');
+        if (cachedUser) {
+            try {
+                const user = JSON.parse(cachedUser);
+                return !!user.isAdmin;
+            } catch (e) {}
+        }
+        return false;
+    });
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        const cached = localStorage.getItem('appUser');
+        return !cached;
+    });
 
     useEffect(() => {
         let unsubscribe: () => void;

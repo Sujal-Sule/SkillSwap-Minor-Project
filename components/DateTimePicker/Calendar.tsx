@@ -77,7 +77,7 @@ const Calendar: React.FC<CalendarProps> = ({
     const dayElements = [];
     // Padding for first day
     for (let i = 0; i < firstDay; i++) {
-      dayElements.push(<div key={`pad-${i}`} className="h-10 w-10" />);
+      dayElements.push(<div key={`pad-${i}`} className="h-9 w-9" />);
     }
 
     for (let day = 1; day <= days; day++) {
@@ -92,13 +92,13 @@ const Calendar: React.FC<CalendarProps> = ({
             const formattedDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             onSelect(formattedDate);
           }}
-          className={`h-10 w-10 flex items-center justify-center rounded-lg text-sm transition-all
+          className={`h-9 w-9 flex items-center justify-center rounded-xl text-sm font-semibold transition-all
             ${
               selected
-                ? "bg-sky-500 text-white font-bold shadow-lg shadow-sky-500/30 elevation-2"
+                ? "bg-sky-500 text-white font-bold shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]"
                 : disabled
-                  ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
-                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  ? "text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-40"
+                  : "text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
             }
           `}
         >
@@ -110,24 +110,24 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   return (
-    <div className="w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 elevation-3">
+    <div className="w-full max-w-[288px] bg-background dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-4 select-none">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs px-2">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <h3 className="font-bold text-text-primary uppercase tracking-wider text-xs">
           {monthNames[month]} {year}
         </h3>
         <div className="flex gap-1">
           <button
             onClick={handlePrevMonth}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-text-muted transition-colors"
           >
-            <ChevronLeftIcon className="w-5 h-5" />
+            <ChevronLeftIcon className="w-4 h-4" />
           </button>
           <button
             onClick={handleNextMonth}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-text-muted transition-colors"
           >
-            <ChevronRightIcon className="w-5 h-5" />
+            <ChevronRightIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -137,7 +137,7 @@ const Calendar: React.FC<CalendarProps> = ({
         {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
           <div
             key={d}
-            className="h-8 w-10 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase tracking-tighter"
+            className="h-8 w-9 flex items-center justify-center text-[10px] font-black text-text-muted uppercase tracking-wider"
           >
             {d}
           </div>

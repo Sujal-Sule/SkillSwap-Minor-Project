@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
-from typing import List
+from typing import List, Any
 from datetime import datetime
 from backend.models import Notification, PyObjectId
 from backend.firebase_setup import get_firestore_db
@@ -8,9 +8,9 @@ from backend.dependencies import get_current_user
 router = APIRouter()
 
 @router.get("/notifications", response_model=List[Notification])
-async def get_notifications(current_user: dict = Depends(get_current_user)):
+async def get_notifications(current_user: Any = Depends(get_current_user)):
     """Fetch notifications for the logged-in user."""
-    user_id = current_user['uid']
+    user_id = current_user.get('uid') if isinstance(current_user, dict) else current_user.id
     db = get_firestore_db()
     
     # In a real app with many notifications, we'd paginate.
@@ -28,9 +28,9 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     return notifications
 
 @router.put("/notifications/{notification_id}/read")
-async def mark_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+async def mark_notification_read(notification_id: str, current_user: Any = Depends(get_current_user)):
     """Mark a notification as read."""
-    user_id = current_user['uid']
+    user_id = current_user.get('uid') if isinstance(current_user, dict) else current_user.id
     db = get_firestore_db()
     doc_ref = db.collection('notifications').document(notification_id)
     doc = doc_ref.get()
@@ -46,9 +46,9 @@ async def mark_notification_read(notification_id: str, current_user: dict = Depe
     return {"status": "success"}
 
 @router.put("/notifications/read-all")
-async def mark_all_read(current_user: dict = Depends(get_current_user)):
+async def mark_all_read(current_user: Any = Depends(get_current_user)):
     """Mark all notifications for the user as read."""
-    user_id = current_user['uid']
+    user_id = current_user.get('uid') if isinstance(current_user, dict) else current_user.id
     db = get_firestore_db()
     batch = db.batch()
     docs = db.collection('notifications').where('userId', '==', user_id).where('isRead', '==', False).stream()
