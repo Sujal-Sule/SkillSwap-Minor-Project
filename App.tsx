@@ -532,7 +532,24 @@ const App: React.FC = () => {
 
   const handleCloseRatingModal = () => {
     if (sessionToRate) {
-      setDismissedRatingSessionIds((prev) => [...prev, sessionToRate.id]);
+      const unratedIds = sessions
+        .filter((s) => {
+          if (s.status !== "completed") return false;
+          if (s.studentId === currentUser?.id) return !s.studentHasRated;
+          if (s.teacherId === currentUser?.id) return !s.teacherHasRated;
+          return false;
+        })
+        .map((s) => s.id);
+
+      setDismissedRatingSessionIds((prev) => {
+        const next = [...prev];
+        unratedIds.forEach((id) => {
+          if (id && !next.includes(id)) {
+            next.push(id);
+          }
+        });
+        return next;
+      });
     }
     setSessionToRate(null);
   };
