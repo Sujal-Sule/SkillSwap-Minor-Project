@@ -16,16 +16,20 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
-        if user_id not in self.active_connections:
+        is_first = user_id not in self.active_connections
+        if is_first:
             self.active_connections[user_id] = []
         self.active_connections[user_id].append(websocket)
+        if is_first:
+            await self.broadcast_status(user_id, True)
 
-    def disconnect(self, websocket: WebSocket, user_id: str):
+    async def disconnect(self, websocket: WebSocket, user_id: str):
         if user_id in self.active_connections:
             if websocket in self.active_connections[user_id]:
                 self.active_connections[user_id].remove(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+                await self.broadcast_status(user_id, False)
 
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
@@ -42,6 +46,22 @@ class ConnectionManager:
                     self.active_connections[user_id].remove(dead)
             if user_id in self.active_connections and not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+                await self.broadcast_status(user_id, False)
+
+    async def broadcast_status(self, user_id: str, is_online: bool):
+        msg = {
+            "type": "user_status",
+            "userId": user_id,
+            "isOnline": is_online
+        }
+        for other_uid, websockets in list(self.active_connections.items()):
+            if other_uid == user_id:
+                continue
+            for ws in websockets:
+                try:
+                    await ws.send_json(msg)
+                except Exception:
+                    pass
 
 manager = ConnectionManager()
 
@@ -120,7 +140,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 
     except WebSocketDisconnect:
         print(f"DEBUG: WebSocket disconnect {user_id}") # DEBUG
-        manager.disconnect(websocket, user_id)
+        await manager.disconnect(websocket, user_id)
     finally:
         heartbeat_task.cancel()
 

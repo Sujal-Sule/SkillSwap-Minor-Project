@@ -88,7 +88,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   const getSessionAccessState = (session: Session) => {
     const now = new Date();
     const scheduledTime = new Date(session.scheduledTime);
-    const unlockTime = new Date(scheduledTime.getTime() - 60 * 60 * 1000);
+    const unlockTime = new Date(scheduledTime.getTime() - 15 * 60 * 1000);
 
     if (now < unlockTime) {
       return {

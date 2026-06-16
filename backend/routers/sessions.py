@@ -7,8 +7,35 @@ from ..models import Session, UserInDB, TokenTransaction, Skill, Rating
 from ..dependencies import get_current_user
 from bson import ObjectId
 from datetime import datetime
+from .chat import manager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+async def notify_session_update(session_id: str, student_id: str, teacher_id: str, status: str):
+    ws_message = {
+        "id": f"system_session_update_{session_id}_{datetime.now().timestamp()}",
+        "messageType": "session_card",
+        "senderId": "system",
+        "receiverId": student_id,
+        "content": f"Session status updated to {status}",
+        "timestamp": datetime.utcnow().isoformat(),
+        "session": {
+            "id": str(session_id),
+            "studentId": student_id,
+            "teacherId": teacher_id,
+            "status": status
+        }
+    }
+    try:
+        await manager.send_personal_message(ws_message, student_id)
+    except Exception:
+        pass
+    ws_message_teacher = dict(ws_message)
+    ws_message_teacher["receiverId"] = teacher_id
+    try:
+        await manager.send_personal_message(ws_message_teacher, teacher_id)
+    except Exception:
+        pass
 
 @router.get("/my", response_model=List[Session])
 async def get_my_sessions(current_user: UserInDB = Depends(get_current_user)):
@@ -88,8 +115,8 @@ async def accept_session(session_id: str, current_user: UserInDB = Depends(get_c
         sessionId=str(sess_id)
     )
     await db.transactions.insert_one(transaction.model_dump(by_alias=True, exclude={"id"}))
+    await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "scheduled")
     
-    updated = await db.sessions.find_one({"_id": sess_id})
     updated = await db.sessions.find_one({"_id": sess_id})
     return Session(**updated)
 
@@ -112,7 +139,7 @@ async def decline_session(session_id: str, current_user: UserInDB = Depends(get_
         raise HTTPException(status_code=400, detail="Cannot decline a session that is not pending")
 
     await db.sessions.update_one({"_id": sess_id}, {"$set": {"status": "declined"}})
-    
+    await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "declined")
     updated = await db.sessions.find_one({"_id": sess_id})
     return Session(**updated)
 
@@ -154,7 +181,7 @@ async def complete_session(session_id: str, current_user: UserInDB = Depends(get
     )
     print(f"DEBUG: Logging transaction: {transaction.model_dump()}")
     await db.transactions.insert_one(transaction.model_dump(by_alias=True, exclude={"id"}))
-
+    await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "completed")
     updated = await db.sessions.find_one({"_id": sess_id})
     return Session(**updated)
 
@@ -181,7 +208,7 @@ async def start_session(session_id: str, current_user: UserInDB = Depends(get_cu
     # Set startedAt
     started_at = datetime.now()
     await db.sessions.update_one({"_id": sess_id}, {"$set": {"startedAt": started_at, "status": "active"}})
-    
+    await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "active")
     updated = await db.sessions.find_one({"_id": sess_id})
     return Session(**updated)
 
@@ -219,6 +246,6 @@ async def rate_session(session_id: str, stars: int = Body(...), feedback: str = 
     
     update_field = "studentHasRated" if is_student else "teacherHasRated"
     await db.sessions.update_one({"_id": sess_id}, {"$set": {update_field: True}})
-    
+    await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "completed")
     updated = await db.sessions.find_one({"_id": sess_id})
     return Session(**updated)

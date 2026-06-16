@@ -76,7 +76,7 @@ import {
   loginWithEmailAndPasswordService,
   registerWithEmailAndPassword,
 } from "./services/authServices";
-import { api, getWebSocketUrl } from "./services/api";
+import { api, getWebSocketUrl, invalidateCache } from "./services/api";
 
 import {
   BrowserRouter as Router,
@@ -117,28 +117,30 @@ const Layout = ({
 
   return (
     <div className="w-full min-h-screen bg-background text-text-primary font-sans transition-colors duration-300">
-      <Header
-        currentUser={currentUser}
-        isAdmin={isAdmin}
-        logout={logout}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        navItems={navItems}
-        currentPage={currentPageId} // Pass currentPageId for Header's active state
-        setCurrentPage={() => {}} // No-op, navigation handled by Router
-      />
+      {location.pathname !== "/admin" && (
+        <Header
+          currentUser={currentUser}
+          isAdmin={isAdmin}
+          logout={logout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          navItems={navItems}
+          currentPage={currentPageId}
+          setCurrentPage={() => {}}
+        />
+      )}
 
       {!isAdmin && (
         <Dock
           navItems={navItems}
-          currentPage={currentPageId} // Pass currentPageId for Dock's active state
-          setCurrentPage={() => {}} // No-op, navigation handled by Router
+          currentPage={currentPageId}
+          setCurrentPage={() => {}}
         />
       )}
 
       <main
         className={`${
-          location.pathname === "/chat" || location.pathname === "/coach"
+          location.pathname === "/chat" || location.pathname === "/coach" || location.pathname === "/admin"
             ? "fixed top-0 left-0 w-full h-full pt-0 z-0 overflow-hidden"
             : "pt-24 pb-24 md:pb-8 px-4 sm:px-6 lg:px-8"
         }`}
@@ -286,6 +288,7 @@ const LiveSessionWrapper: React.FC<{
   onEndSession,
 }) => {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
 
   const currentSession = useMemo(() => {
     if (activeSession && activeSession.id === sessionId) {
@@ -300,6 +303,13 @@ const LiveSessionWrapper: React.FC<{
       setActiveSession(currentSession);
     }
   }, [currentSession, activeSession, setActiveSession]);
+
+  useEffect(() => {
+    if (currentSession && currentSession.status === "completed") {
+      setActiveSession(null);
+      navigate("/");
+    }
+  }, [currentSession?.status, navigate, setActiveSession]);
 
   if (!currentSession) {
     return <Navigate to="/" replace />;
@@ -354,6 +364,7 @@ const App: React.FC = () => {
   >([]);
   const [allSkills, setAllSkills] = useState<Skill[]>(initialSkills);
   const [sessionToRate, setSessionToRate] = useState<Session | null>(null);
+  const [dismissedRatingSessionIds, setDismissedRatingSessionIds] = useState<string[]>([]);
   const [isScheduling, setIsScheduling] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -375,9 +386,12 @@ const App: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // Data Fetching
-  const fetchData = async () => {
+  const fetchData = async (options?: { skipCache?: boolean }) => {
     if (!currentUser) return;
     try {
+      if (options?.skipCache) {
+        invalidateCache();
+      }
       const [
         usersRes,
         sessionsRes,
@@ -385,11 +399,11 @@ const App: React.FC = () => {
         transactionsRes,
         ratingsRes,
       ] = await Promise.all([
-        api.get("/users/"),
-        api.get("/sessions/my"),
-        api.get("/connections/"),
-        api.get("/users/transactions"),
-        api.get(`/users/${currentUser.id}/ratings`),
+        api.get("/users/", { skipCache: options?.skipCache }),
+        api.get("/sessions/my", { skipCache: options?.skipCache }),
+        api.get("/connections/", { skipCache: options?.skipCache }),
+        api.get("/users/transactions", { skipCache: options?.skipCache }),
+        api.get(`/users/${currentUser.id}/ratings`, { skipCache: options?.skipCache }),
       ]);
       setAllUsers(usersRes.map((u: any) => ({ ...u, id: u._id || u.id })));
       setSessions(
@@ -430,6 +444,26 @@ const App: React.FC = () => {
     }
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!currentUser || sessionToRate) return;
+
+    const unratedSession = sessions.find((s) => {
+      if (s.status !== "completed") return false;
+      if (dismissedRatingSessionIds.includes(s.id)) return false;
+      if (s.studentId === currentUser.id) {
+        return !s.studentHasRated;
+      }
+      if (s.teacherId === currentUser.id) {
+        return !s.teacherHasRated;
+      }
+      return false;
+    });
+
+    if (unratedSession) {
+      setSessionToRate(unratedSession);
+    }
+  }, [sessions, currentUser, sessionToRate, dismissedRatingSessionIds]);
 
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
@@ -497,6 +531,9 @@ const App: React.FC = () => {
   };
 
   const handleCloseRatingModal = () => {
+    if (sessionToRate) {
+      setDismissedRatingSessionIds((prev) => [...prev, sessionToRate.id]);
+    }
     setSessionToRate(null);
   };
 
@@ -633,6 +670,15 @@ const App: React.FC = () => {
             return;
           }
 
+          // Handle user online/offline status updates
+          if (data.type === "user_status") {
+            const { userId, isOnline } = data;
+            setAllUsers((prev) =>
+              prev.map((u) => (u.id === userId ? { ...u, isOnline } : u))
+            );
+            return;
+          }
+
           // Handle WebRTC Signals
           if (data.messageType === "signal") {
             if (data.text) {
@@ -671,6 +717,17 @@ const App: React.FC = () => {
               }
             : undefined;
 
+          if (sessionData) {
+            setSessions((prev) => {
+              const exists = prev.some((s) => s.id === sessionData.id);
+              if (exists) {
+                return prev.map((s) => (s.id === sessionData.id ? { ...s, ...sessionData } : s));
+              } else {
+                return [...prev, sessionData];
+              }
+            });
+          }
+
           const parsedMessage: Message = {
             ...data,
             timestamp: parseAsUTC(data.timestamp),
@@ -688,7 +745,7 @@ const App: React.FC = () => {
             parsedMessage.session ||
             parsedMessage.messageType === "session_card"
           ) {
-            fetchData();
+            fetchData({ skipCache: true });
           }
         };
 
@@ -828,11 +885,6 @@ const App: React.FC = () => {
         updateUser({ ...meRes, id: meRes._id || meRes.id });
       }
       fetchData();
-
-      const justCompletedSession = sessions.find((s) => s.id === sessionId);
-      if (justCompletedSession) {
-        setSessionToRate(justCompletedSession);
-      }
     } catch (error) {
       console.error("Failed to complete session", error);
     }

@@ -42,9 +42,23 @@ if frontend_url:
     if origin_without_slash != frontend_url:
         origins.append(origin_without_slash)
 
+# Dynamically add host's local IP for mobile testing
+import socket
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    local_ip = s.getsockname()[0]
+    s.close()
+    if local_ip:
+        origins.append(f"http://{local_ip}:3000")
+        origins.append(f"http://{local_ip}:5173")
+except Exception:
+    pass
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

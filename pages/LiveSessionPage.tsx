@@ -52,7 +52,10 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [remainingTime, setRemainingTime] = useState<number>(session.duration * 60);
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(
+    session.startedAt ? new Date(session.startedAt).toISOString() : null
+  );
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [effectsActive, setEffectsActive] = useState(false);
   const [viewMode, setViewMode] = useState<"whiteboard" | "screen_share">(
@@ -71,6 +74,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const dataChannel = useRef<RTCDataChannel | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const handleEndSessionRef = useRef<() => void>(() => {});
   const audioTrackRef = useRef<MediaStreamTrack | null>(null);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -78,6 +82,11 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
     null
   );
   const isCleanedUpRef = useRef(false);
+  const hasEndedRef = useRef(false);
+
+  useEffect(() => {
+    handleEndSessionRef.current = handleEndSession;
+  });
   
   // IMPROVED: Track ICE candidates for diagnostic
   const iceCandidatesRef = useRef<{ local: RTCIceCandidate[]; remote: RTCIceCandidate[] }>({
@@ -122,33 +131,46 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
     }
   }, []);
 
-  // Timer
+  // Start session on backend
   useEffect(() => {
-    const fetchStartTime = async () => {
+    const startSessionOnBackend = async () => {
       try {
-        const res = await api.put(`/sessions/${session.id}/start`);
-        if (res.startedAt) {
-          const timeString = res.startedAt.endsWith("Z")
-            ? res.startedAt
-            : res.startedAt + "Z";
-          startTimeRef.current = new Date(timeString).getTime();
+        const updatedSession = await api.put(`/sessions/${session.id}/start`);
+        if (updatedSession && updatedSession.startedAt) {
+          setSessionStartedAt(new Date(updatedSession.startedAt).toISOString());
         }
       } catch (error) {
-        console.error("Error syncing start time", error);
+        console.error("Error starting session on backend", error);
       }
     };
-    fetchStartTime();
+    startSessionOnBackend();
+  }, [session.id, session.startedAt]);
 
-    const interval = setInterval(() => {
-      if (startTimeRef.current) {
-        setElapsedTime(
-          Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000))
-        );
+  // Countdown timer based on scheduledTime and duration (only ticks down after scheduled time)
+  useEffect(() => {
+    const scheduledTimeMs = new Date(session.scheduledTime).getTime();
+    const durationMs = session.duration * 60 * 1000;
+    const endTimeMs = scheduledTimeMs + durationMs;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      if (now < scheduledTimeMs) {
+        setRemainingTime(session.duration * 60);
+      } else {
+        const secondsLeft = Math.floor((endTimeMs - now) / 1000);
+        if (secondsLeft <= 0) {
+          setRemainingTime(0);
+          handleEndSessionRef.current();
+        } else {
+          setRemainingTime(secondsLeft);
+        }
       }
-    }, 1000);
+    };
 
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [session.id]);
+  }, [session.id, session.scheduledTime, session.duration]);
 
   // IMPROVED: Better stats collection
   const startStatsPolling = useCallback(
@@ -317,18 +339,34 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
               },
         };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        if (isCleanedUpRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
+        let stream: MediaStream | null = null;
+        try {
+          if (!navigator.mediaDevices) {
+            console.error("Camera and microphone access requires HTTPS or localhost (Secure Context). Browser blocked device prompt.");
+          } else {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+          }
+        } catch (mediaError) {
+          console.warn("Could not access camera/microphone. Bypassing device requirements.", mediaError);
         }
 
-        setLocalStream(stream);
-        cameraStreamRef.current = stream;
-        allStreamsRef.current.push(stream);
-        audioTrackRef.current = stream.getAudioTracks()[0] || null;
-        videoTrackRef.current = stream.getVideoTracks()[0] || null;
+        if (stream) {
+          if (isCleanedUpRef.current) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          setLocalStream(stream);
+          cameraStreamRef.current = stream;
+          allStreamsRef.current.push(stream);
+          audioTrackRef.current = stream.getAudioTracks()[0] || null;
+          videoTrackRef.current = stream.getVideoTracks()[0] || null;
+        } else {
+          setLocalStream(null);
+          cameraStreamRef.current = null;
+          audioTrackRef.current = null;
+          videoTrackRef.current = null;
+        }
 
         // 3. Create PeerConnection with optimal config
         const pc = new RTCPeerConnection({
@@ -341,8 +379,8 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         peerConnection.current = pc;
 
         // 4. Add audio FIRST (priority)
-        const audioTrack = stream.getAudioTracks()[0];
-        if (audioTrack) {
+        const audioTrack = stream ? stream.getAudioTracks()[0] : null;
+        if (audioTrack && stream) {
           const audioSender = pc.addTrack(audioTrack, stream);
           try {
             const params = audioSender.getParameters();
@@ -352,42 +390,30 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           } catch (e) {
             console.warn("Audio params setup failed", e);
           }
+        } else {
+          pc.addTransceiver("audio", { direction: "recvonly" });
         }
 
-        // 5. Add video with simulcast for good connections
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          if (useLowBandwidth) {
-            const videoSender = pc.addTrack(videoTrack, stream);
-            try {
-              const params = videoSender.getParameters();
-              if (!params.encodings) params.encodings = [{}];
+        // 5. Add video track with simple quality adjustments
+        const videoTrack = stream ? stream.getVideoTracks()[0] : null;
+        if (videoTrack && stream) {
+          const videoSender = pc.addTrack(videoTrack, stream);
+          try {
+            const params = videoSender.getParameters();
+            if (!params.encodings) params.encodings = [{}];
+            if (useLowBandwidth) {
               params.encodings[0].maxBitrate = 150000;
               params.encodings[0].maxFramerate = 15;
-              await videoSender.setParameters(params);
-            } catch (e) {
-              console.warn("Video params setup failed", e);
+            } else {
+              params.encodings[0].maxBitrate = 500000;
+              params.encodings[0].maxFramerate = 30;
             }
-          } else {
-            // Simulcast for desktop
-            const transceiver = pc.addTransceiver(videoTrack, {
-              direction: "sendrecv",
-              streams: [stream],
-              sendEncodings: [
-                { rid: "high", maxBitrate: 500000, maxFramerate: 30 },
-                { rid: "mid", maxBitrate: 300000, maxFramerate: 24 },
-                { rid: "low", maxBitrate: 100000, maxFramerate: 15 },
-              ],
-            });
-
-            try {
-              const params = transceiver.sender.getParameters();
-              if (!params.encodings) params.encodings = [{}];
-              await transceiver.sender.setParameters(params);
-            } catch (e) {
-              console.warn("Simulcast setup failed", e);
-            }
+            await videoSender.setParameters(params);
+          } catch (e) {
+            console.warn("Video params setup failed", e);
           }
+        } else {
+          pc.addTransceiver("video", { direction: "recvonly" });
         }
 
         // 6. Create DataChannel
@@ -399,7 +425,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         pc.ontrack = ({ track, streams }) => {
           console.log("Received remote track:", track.kind);
           if (streams[0]) {
-            setRemoteStream(streams[0]);
+            setRemoteStream(new MediaStream(streams[0].getTracks()));
           }
         };
 
@@ -489,7 +515,12 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           if (!pc || pc.signalingState === "closed") return;
 
           try {
-            const { description, candidate } = data.payload;
+            if (data.payload && data.payload.type === "mode_change") {
+              setViewMode(data.payload.mode);
+              return;
+            }
+
+            const { description, candidate } = data.payload || {};
 
             if (description) {
               const offerCollision =
@@ -655,40 +686,60 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
     }
   };
 
-  const toggleScreenShare = async () => {
+  const stopScreenSharing = async () => {
     const pc = peerConnection.current;
     if (!pc) return;
 
-    if (isScreenSharing) {
-      try {
-        const senders = pc.getSenders();
-        const videoSender = senders.find((s) => s.track?.kind === "video");
+    try {
+      const videoTransceiver = pc.getTransceivers().find(
+        (t) => t.mediaType === "video"
+      );
 
-        if (videoSender?.track) {
-          videoSender.track.stop();
-        }
+      if (videoTransceiver?.sender?.track) {
+        videoTransceiver.sender.track.stop();
+      }
 
-        let camTrack = videoTrackRef.current;
-        if (!camTrack || camTrack.readyState === "ended") {
+      let camTrack = videoTrackRef.current;
+      if (!camTrack || camTrack.readyState === "ended") {
+        try {
           const newStream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 640 }, height: { ideal: 480 } },
             audio: false,
           });
           camTrack = newStream.getVideoTracks()[0];
+          videoTrackRef.current = camTrack;
           allStreamsRef.current.push(newStream);
+        } catch (mediaErr) {
+          console.warn("Could not re-acquire camera track on stop screen sharing", mediaErr);
+          camTrack = null;
         }
-
-        if (videoSender) {
-          await videoSender.replaceTrack(camTrack);
-        }
-
-        setLocalStream(cameraStreamRef.current);
-        setIsScreenSharing(false);
-        setViewMode("whiteboard");
-        sendSignal({ type: "mode_change", mode: "whiteboard" });
-      } catch (e) {
-        console.error("Error stopping screen share", e);
       }
+
+      if (videoTransceiver) {
+        if (camTrack) {
+          videoTransceiver.direction = "sendrecv";
+          await videoTransceiver.sender.replaceTrack(camTrack);
+        } else {
+          videoTransceiver.direction = "recvonly";
+          await videoTransceiver.sender.replaceTrack(null);
+        }
+      }
+
+      setLocalStream(cameraStreamRef.current);
+      setIsScreenSharing(false);
+      setViewMode("whiteboard");
+      sendSignal({ type: "mode_change", mode: "whiteboard" });
+    } catch (e) {
+      console.error("Error stopping screen share", e);
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    const pc = peerConnection.current;
+    if (!pc) return;
+
+    if (isScreenSharing) {
+      await stopScreenSharing();
     } else {
       try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -699,11 +750,13 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         const screenTrack = displayStream.getVideoTracks()[0];
         allStreamsRef.current.push(displayStream);
 
-        const senders = pc.getSenders();
-        const videoSender = senders.find((s) => s.track?.kind === "video");
+        const videoTransceiver = pc.getTransceivers().find(
+          (t) => t.mediaType === "video"
+        );
 
-        if (videoSender) {
-          await videoSender.replaceTrack(screenTrack);
+        if (videoTransceiver) {
+          videoTransceiver.direction = "sendrecv";
+          await videoTransceiver.sender.replaceTrack(screenTrack);
         }
 
         setLocalStream(displayStream);
@@ -712,8 +765,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         sendSignal({ type: "mode_change", mode: "screen_share" });
 
         screenTrack.onended = () => {
-          setIsScreenSharing(false);
-          setViewMode("whiteboard");
+          stopScreenSharing();
         };
       } catch (err) {
         console.error("Error starting screen share", err);
@@ -730,6 +782,9 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   };
 
   const handleEndSession = () => {
+    if (hasEndedRef.current) return;
+    hasEndedRef.current = true;
+
     allStreamsRef.current.forEach((stream) => {
       stream?.getTracks().forEach((t) => t.stop());
     });
@@ -816,7 +871,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         <div className="flex items-center gap-6 text-text-secondary font-mono text-sm font-semibold">
           <div className="flex items-center gap-2">
             <ClockIcon className="w-5 h-5 text-sky-500" />
-            <span>Time: {formatTime(elapsedTime)}</span>
+            <span>Time: {formatTime(remainingTime)}</span>
           </div>
           <div className="flex items-center gap-2">
             <TokenIcon className="w-5 h-5 text-amber-500" />
@@ -851,6 +906,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
                 isLocal={isScreenSharing}
                 isMicOn={true}
                 objectFit="contain"
+                mirror={false}
               />
             </div>
           )}
@@ -858,53 +914,25 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
         <aside className="w-[320px] flex-shrink-0 flex flex-col gap-4">
           <div className="flex-1 space-y-4 flex flex-col">
-            {viewMode === "whiteboard" ? (
-              <>
-                <div className="relative">
-                  <VideoPlayer
-                    stream={remoteStream}
-                    muted={false}
-                    label={otherUser.name}
-                    isLocal={false}
-                    isMicOn={remoteMicOn}
-                    isFocused={true}
-                  />
-                  <ConnectionOverlay status={connectionStatus} />
-                </div>
-                <VideoPlayer
-                  stream={localStream}
-                  muted={true}
-                  label={isScreenSharing ? "Your Screen" : "You"}
-                  isLocal={true}
-                  isMicOn={isMicOn}
-                  mirror={!isScreenSharing}
-                />
-              </>
-            ) : (
-              <>
-                <VideoPlayer
-                  stream={localStream}
-                  muted={true}
-                  label={isScreenSharing ? "Your Screen" : "You"}
-                  isLocal={true}
-                  isMicOn={isMicOn}
-                  mirror={!isScreenSharing}
-                />
-                {isScreenSharing && (
-                  <div className="relative">
-                    <VideoPlayer
-                      stream={remoteStream}
-                      muted={false}
-                      label={otherUser.name}
-                      isLocal={false}
-                      isMicOn={remoteMicOn}
-                      isFocused={true}
-                    />
-                    <ConnectionOverlay status={connectionStatus} />
-                  </div>
-                )}
-              </>
-            )}
+            <div className="relative">
+              <VideoPlayer
+                stream={remoteStream}
+                muted={false}
+                label={otherUser.name}
+                isLocal={false}
+                isMicOn={remoteMicOn}
+                isFocused={viewMode === "whiteboard"}
+              />
+              <ConnectionOverlay status={connectionStatus} />
+            </div>
+            <VideoPlayer
+              stream={localStream}
+              muted={true}
+              label={isScreenSharing ? "Your Screen" : "You"}
+              isLocal={true}
+              isMicOn={isMicOn}
+              mirror={!isScreenSharing}
+            />
           </div>
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-4">

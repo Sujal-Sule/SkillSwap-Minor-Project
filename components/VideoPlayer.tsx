@@ -28,9 +28,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     const videoEl = videoRef.current;
-    if (!videoEl || !stream) return;
+    if (!videoEl) return;
+
+    if (!stream) {
+      videoEl.srcObject = null;
+      return;
+    }
 
     videoEl.srcObject = stream;
+    videoEl.play().catch((err) => {
+      console.warn("Autoplay failed:", err);
+    });
 
     const handleTrackChange = () => {
       if (videoEl.srcObject !== stream) {
