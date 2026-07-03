@@ -1,118 +1,119 @@
-# Skill Swap - AI-Powered Skill Exchange Platform
+# 🔄 SkillSwap
 
-Skill Swap is a modern web application designed to connect users for mutual skill learning. It leverages AI to enhance the learning experience and provides real-time collaboration tools.
+A peer-to-peer skill exchange platform where users can teach what they know and learn what they don't. Built as a full-stack, multi-module social learning system featuring an embedded AI mentor, interactive token economy, and real-time collaboration environments.
 
-## 🚀 Features
+<div align="center">
 
-- **AI-Powered Assistance**: Integrated with Google Gemini for intelligent suggestions and help.
-- **Real-Time Chat**: Seamless messaging between users.
-- **Collaborative Whiteboard**: visual tool for explaining concepts in real-time.
-- **User Networking**: Connect with others based on skills to teach and learn.
-- **Admin Panel**: Comprehensive dashboard for user and platform management.
-- **Authentication**: Secure login and signup using Firebase.
+[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-skillswap.sujalsule.in-FFD700?style=for-the-badge&logoColor=black)](https://skillswap.sujalsule.in)
+[![Tech Stack](https://img.shields.io/badge/Stack-React%20%2B%20FastAPI%20%2B%20Mongo-FF9D00?style=for-the-badge)](https://github.com/Sujal-Sule/SkillSwap-Minor-Project)
 
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework**: React (Vite)
-- **Language**: TypeScript
-- **Styling**: CSS / Tailwind (if applicable)
-- **State Management**: React Context / Hooks
-- **Integrations**: Firebase (Auth), Google Gemini AI
-
-### Backend
-- **Framework**: FastAPI (Python)
-- **Database**: MongoDB (Motor async driver)
-- **Authentication**: Firebase Admin SDK
-- **WebSockets**: For real-time chat and whiteboard features
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have the following installed:
-- **Node.js** (v18+ recommended)
-- **Python** (v3.9+ recommended)
-- **MongoDB** (Running locally or a cloud instance URL)
-- **Firebase Project** (With Auth and Firestore enabled)
-
-## ⚙️ Installation & Setup
-
-### 1. Backend Setup
-
-The backend handles API requests, database interactions, and real-time features.
-
-1.  Navigate to the backend directory:
-    ```bash
-    cd backend
-    ```
-
-2.  Create and activate a virtual environment:
-    ```bash
-    # macOS/Linux
-    python3 -m venv venv
-    source venv/bin/activate
-
-    # Windows
-    python -m venv venv
-    venv\Scripts\activate
-    ```
-
-3.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Configuration**:
-    - Ensure MongoDB is running (Default: `mongodb://localhost:27017`).
-    - Place your Firebase Service Account JSON file in the `backend/` directory and name it `serviceAccountKey.json`.
-    - (Optional) Create a `.env` file in `backend/` variables if needed (e.g., `MONGODB_URL`).
-
-5.  **Initialize Admin User** (Optional but recommended):
-    ```bash
-    python admin_setup.py
-    ```
-    This script creates a default admin user (`admin@skillswap.com` / `admin1234`).
-
-6.  **Run the Server**:
-    ```bash
-    uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    ```
-    The API will be available at `http://localhost:8000`. API Docs at `http://localhost:8000/docs`.
+</div>
 
 ---
 
-### 2. Frontend Setup
+## 📐 System Architecture
 
-The frontend is the user interface for the application.
+SkillSwap uses an environment-aware, decoupled layout matching a high-performance React client with an asynchronous FastAPI processing layer.
 
-1.  Navigate to the project root (if not already there):
-    ```bash
-    cd ..
-    # or ensure you are in the 'skill-swap-google-aistudio' directory
-    ```
+### Architectural Data Flow
+```mermaid
+graph TD
+    %% Frontend Layer
+    subgraph Frontend [Client App - React & TS]
+        UI[Pages & UI Engine]
+        Dock[Mobile Bottom Dock]
+        API_Layer[Centralized HTTP Client]
+        Gemini_SDK[Google GenAI SDK]
+    end
 
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+    %% Routing / Auth Layer
+    subgraph Security [Auth & Gateway]
+        Firebase[Firebase Token Verifier]
+    end
 
-3.  **Configuration**:
-    - Create a `.env.local` file in the root directory.
-    - Add your Gemini API Key:
-      ```env
-      VITE_GEMINI_API_KEY=your_gemini_api_key_here
-      ```
-      *(Note: Check the code for the exact variable name expected for the Gemini Key, usually `VITE_` prefix is required for Vite).*
+    %% Backend Layer
+    subgraph Backend [Backend Engine - FastAPI]
+        Router[Modular App Routers]
+        Models[Pydantic Domain Models]
+    end
 
-4.  **Run the Development Server**:
-    ```bash
-    npm run dev
-    ```
-    The app will be available at `http://localhost:5173`.
+    %% Persistence Layer
+    subgraph Database [Storage Layer]
+        MongoDB[(MongoDB Cluster)]
+    end
 
-## 🤝 Contributing
+    %% Connections
+    UI --> Dock
+    UI --> API_Layer
+    UI --> Gemini_SDK
+    API_Layer -->|Auth Headers / WS| Router
+    Router --> Security
+    Security -->|Verify Session| Firebase
+    Router --> Models
+    Models -->|Persistent Storage| MongoDB
+```
 
-1.  Fork the repository.
-2.  Create a feature branch.
-3.  Commit your changes.
-4.  Push to the branch.
-5.  Open a Pull Request.
+### 1. Frontend
+
+**React + TypeScript + Vite.**
+
+* `services/api.ts` — base URL config, auth headers, request dedup, cache invalidation.
+* Covers user workspaces, discovery, real-time layouts, and legal/helper pages.
+
+### 2. Backend
+
+**FastAPI (Python).**
+
+* Env-aware CORS for local, LAN (mobile debug), and production.
+* `backend/dependencies.py` — Firebase bearer token auth.
+
+---
+
+## ⚡ Core Feature Modules
+
+* **AI Mentor** (`pages/CoachPage.tsx`, `services/geminiService.ts`) — Google GenAI SDK, per-user chat context, delivers learning plans and roadmaps.
+* **Token Economy** (`TokenTransaction`) — earn credits by teaching, spend credits to book sessions.
+* **Sessions** — match (`teaches` vs `learns`) → connect → schedule (time/duration/cost) → review & settle tokens.
+* **Chat Engine** — text, inline cards, and live AI guidance.
+* **Shared Canvas** — real-time collaborative whiteboard.
+* **Notifications** — matches, session updates, invites.
+* **Admin Router** — platform metrics, suspend/promote users (`isSuspended`, `isAdmin`).
+
+---
+
+## 🛠️ Technical Specifications & Setup
+
+### Tech Stack
+
+* **Frontend UI:** React, TypeScript, Vite, React Router, Framer Motion, Google GenAI SDK
+* **Backend API:** FastAPI, Python, MongoDB, Firebase Auth Services, WebSockets, Pydantic
+
+### System Environment Variables
+
+**Frontend (`.env`):**
+
+```env
+VITE_API_URL=http://localhost:8000
+VITE_API_KEY=your_gemini_api_key
+```
+
+**Backend (`backend/.env`):**
+
+```env
+FRONTEND_URL=http://localhost:5173
+MONGODB_URL=your_mongodb_connection_string
+```
+
+### Local Development Bootstrapping
+
+```bash
+# 1. Clone and launch the Frontend Single Page Application
+git clone https://github.com/Sujal-Sule/SkillSwap-Minor-Project.git
+npm install
+npm run dev
+
+# 2. Open an alternative shell and spin up the API gateway
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
