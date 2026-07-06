@@ -289,14 +289,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
               <h2 className="text-xl font-black text-text-primary tracking-tight">
                 Explore Categories
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {categories
                   .filter((c) => c.id !== "c5")
                   .map((cat) => (
                     <div
                       key={cat.id}
                       onClick={() => onCategorySelect(cat.id)}
-                      className={`flex items-center gap-4 p-5 rounded-2xl bg-slate-100/50 dark:bg-slate-900/60 ${SHADOW_TACTILE_BUTTON} cursor-pointer transition-all duration-300 border border-slate-200/30 dark:border-slate-800/40 group`}
+                      className={`flex items-center gap-3.5 p-4 sm:p-5 rounded-2xl bg-slate-100/50 dark:bg-slate-900/60 ${SHADOW_TACTILE_BUTTON} cursor-pointer transition-all duration-300 border border-slate-200/30 dark:border-slate-800/40 group`}
                     >
                       <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${
                         cat.color === "sky"

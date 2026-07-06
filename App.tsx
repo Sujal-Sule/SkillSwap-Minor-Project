@@ -337,6 +337,14 @@ const LiveSessionWrapper: React.FC<{
   );
 };
 
+const LocationTracker = ({ onLocationChange }: { onLocationChange: () => void }) => {
+  const location = useLocation();
+  useEffect(() => {
+    onLocationChange();
+  }, [location.pathname]);
+  return null;
+};
+
 const App: React.FC = () => {
   const {
     currentUser,
@@ -364,7 +372,24 @@ const App: React.FC = () => {
   >([]);
   const [allSkills, setAllSkills] = useState<Skill[]>(initialSkills);
   const [sessionToRate, setSessionToRate] = useState<Session | null>(null);
-  const [dismissedRatingSessionIds, setDismissedRatingSessionIds] = useState<string[]>([]);
+  const [dismissedRatingSessionIds, setDismissedRatingSessionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("dismissedRatingSessionIds");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const dismissedSessionsRef = useRef<string[]>([]);
+  if (dismissedSessionsRef.current.length === 0 && dismissedRatingSessionIds.length > 0) {
+    dismissedSessionsRef.current = [...dismissedRatingSessionIds];
+  }
+
+  useEffect(() => {
+    localStorage.setItem("dismissedRatingSessionIds", JSON.stringify(dismissedRatingSessionIds));
+  }, [dismissedRatingSessionIds]);
+
   const [isScheduling, setIsScheduling] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -430,9 +455,54 @@ const App: React.FC = () => {
     }
   };
 
+  const urlB64ToUint8Array = (base64String: string) => {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  const registerPushNotifications = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.log("Push notifications not supported on this browser.");
+      return;
+    }
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/"
+      });
+      console.log("Service Worker registered:", registration);
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        console.log("Notification permission denied.");
+        return;
+      }
+
+      const applicationServerKey = urlB64ToUint8Array(
+        "BNyuAZyf81p0sWQiq_NeJB23ns5ht95jONOLu_dJMBho2rhvXuFFUIuYVbos_cG2wlh3TvN3mKvQV1VIXHYTSXc"
+      );
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
+
+      await api.post("/users/subscribe-push", subscription);
+      console.log("Successfully subscribed to Web Push notifications.");
+    } catch (err) {
+      console.error("Failed to register Web Push:", err);
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       fetchData();
+      registerPushNotifications();
     }
   }, [currentUser]);
 
@@ -450,7 +520,7 @@ const App: React.FC = () => {
 
     const unratedSession = sessions.find((s) => {
       if (s.status !== "completed") return false;
-      if (dismissedRatingSessionIds.includes(s.id)) return false;
+      if (dismissedRatingSessionIds.includes(s.id) || dismissedSessionsRef.current.includes(s.id)) return false;
       if (s.studentId === currentUser.id) {
         return !s.studentHasRated;
       }
@@ -541,15 +611,13 @@ const App: React.FC = () => {
         })
         .map((s) => s.id);
 
-      setDismissedRatingSessionIds((prev) => {
-        const next = [...prev];
-        unratedIds.forEach((id) => {
-          if (id && !next.includes(id)) {
-            next.push(id);
-          }
-        });
-        return next;
+      unratedIds.forEach((id) => {
+        if (id && !dismissedSessionsRef.current.includes(id)) {
+          dismissedSessionsRef.current.push(id);
+        }
       });
+
+      setDismissedRatingSessionIds([...dismissedSessionsRef.current]);
     }
     setSessionToRate(null);
   };
@@ -1072,6 +1140,7 @@ const App: React.FC = () => {
 
   return (
     <Router>
+      <LocationTracker onLocationChange={() => fetchData({ skipCache: true })} />
       <ScrollToTop />
       <ErrorBoundary>
         <div className="w-full min-h-screen bg-background text-slate-800 dark:text-slate-200 font-sans transition-colors duration-300">

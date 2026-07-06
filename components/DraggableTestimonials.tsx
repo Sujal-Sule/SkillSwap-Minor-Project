@@ -38,6 +38,24 @@ const DraggableTestimonials: React.FC<DraggableTestimonialsProps> = ({
     carouselRef.current.scrollLeft = scrollLeft - walk;
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!carouselRef.current) return;
+    setIsDown(true);
+    setStartX(e.touches[0].pageX - carouselRef.current.offsetLeft);
+    setScrollLeft(carouselRef.current.scrollLeft);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDown(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDown || !carouselRef.current) return;
+    const x = e.touches[0].pageX - carouselRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    carouselRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   return (
     <div
       ref={carouselRef}
@@ -45,6 +63,9 @@ const DraggableTestimonials: React.FC<DraggableTestimonialsProps> = ({
       onMouseLeave={handleMouseLeave}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
       className="overflow-x-auto select-none cursor-grab active:cursor-grabbing flex gap-6 pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
     >
       {testimonials.map((testimonial) => (

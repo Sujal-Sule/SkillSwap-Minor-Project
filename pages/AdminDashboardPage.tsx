@@ -27,15 +27,15 @@ const AdminSidebar = ({ activeTab, setActiveTab, theme, toggleTheme, logout }: a
   ];
 
   return (
-    <div className="w-64 bg-[#e8edf2] dark:bg-[#121a2e] flex flex-col h-full border-r border-slate-200/5 dark:border-slate-800/5 flex-shrink-0 z-10">
-      <div className="h-20 flex items-center px-6 border-b border-slate-200/5 dark:border-slate-800/5">
+    <div className="w-64 bg-[#e8edf2] dark:bg-[#121a2e] flex flex-col h-full border-r border-slate-200/10 dark:border-slate-800/10 flex-shrink-0 z-10">
+      <div className="h-20 flex items-center px-6 border-b border-slate-200/10 dark:border-slate-800/10">
         <div className="font-bold text-lg text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-          <div className="w-3.5 h-3.5 rounded-full bg-sky-500 shadow-[0_0_10px_rgba(14,165,233,0.5)] animate-pulse"></div>
+          <div className="w-3 h-3 rounded-full bg-sky-500 shadow-[0_0_10px_rgba(14,165,233,0.5)] animate-pulse"></div>
           ADMIN<span className="text-slate-400 dark:text-slate-500">PANEL</span>
         </div>
       </div>
 
-      <div className="flex-1 py-6 space-y-1">
+      <div className="flex-1 py-6 space-y-1 overflow-y-auto">
         <div className="px-6 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
           Main Console
         </div>
@@ -48,7 +48,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, theme, toggleTheme, logout }: a
               className={`w-[calc(100%-2rem)] mx-4 my-1 flex items-center px-4 py-3 text-sm font-semibold transition-all duration-200 rounded-2xl border ${
                 isActive
                   ? "bg-[#e8edf2] dark:bg-[#121a2e] text-sky-600 dark:text-sky-400 border-slate-200/10 dark:border-slate-800/10 shadow-[inset_3px_3px_6px_rgba(163,177,198,0.35),_inset_-3px_-3px_6px_rgba(255,255,255,0.85)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.5),_inset_-3px_-3px_6px_rgba(255,255,255,0.02)]"
-                  : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-850 dark:hover:text-slate-200 hover:scale-[1.01]"
+                  : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-slate-200 hover:scale-[1.01]"
               }`}
             >
               <item.icon
@@ -62,7 +62,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, theme, toggleTheme, logout }: a
         })}
       </div>
 
-      <div className="p-4 border-t border-slate-200/5 dark:border-slate-800/5 space-y-3">
+      <div className="p-4 border-t border-slate-200/10 dark:border-slate-800/10 space-y-3">
         <div className="flex items-center justify-between px-2">
           <button
             onClick={toggleTheme}
@@ -80,7 +80,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, theme, toggleTheme, logout }: a
           </button>
         </div>
 
-        <div className="p-3.5 rounded-2xl border border-slate-200/5 dark:border-slate-800/5 bg-[#e8edf2]/30 dark:bg-[#121a2e]/30 shadow-[inset_1px_1px_3px_rgba(163,177,198,0.1),_inset_-1px_-1px_3px_rgba(255,255,255,0.5)] dark:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.3)] text-[10px] font-mono text-slate-400 dark:text-slate-500 space-y-1">
+        <div className="p-3.5 rounded-2xl border border-slate-200/10 dark:border-slate-800/10 bg-[#e8edf2]/30 dark:bg-[#121a2e]/30 shadow-[inset_1px_1px_3px_rgba(163,177,198,0.1),_inset_-1px_-1px_3px_rgba(255,255,255,0.5)] dark:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.3)] text-[10px] font-mono text-slate-400 dark:text-slate-500 space-y-1">
           <div className="flex items-center gap-1.5 mb-1 text-emerald-600 dark:text-emerald-400 font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] animate-pulse"></span>
             SYS OK
@@ -309,20 +309,18 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#e8edf2] dark:bg-[#121a2e] w-full h-screen font-sans text-slate-900 dark:text-slate-100 flex overflow-hidden p-4 gap-4">
-      {/* Sidebar - Neumorphic panel */}
-      <div className="w-64 bg-[#e8edf2] dark:bg-[#121a2e] rounded-[32px] border border-slate-200/10 dark:border-slate-800/10 shadow-[6px_6px_12px_rgba(163,177,198,0.35),_-6px_-6px_12px_rgba(255,255,255,0.8)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.4),_-6px_-6px_12px_rgba(255,255,255,0.02)] flex flex-col h-full overflow-hidden">
-        <AdminSidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          theme={theme}
-          toggleTheme={toggleTheme}
-          logout={logout}
-        />
-      </div>
+    <div className="bg-[#e8edf2] dark:bg-[#121a2e] w-full h-screen font-sans text-slate-900 dark:text-slate-100 flex overflow-hidden">
+      {/* Sidebar */}
+      <AdminSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        logout={logout}
+      />
 
-      {/* Main Console Area - Neumorphic panel */}
-      <div className="flex-1 bg-[#e8edf2] dark:bg-[#121a2e] rounded-[32px] border border-slate-200/10 dark:border-slate-800/10 shadow-[6px_6px_12px_rgba(163,177,198,0.35),_-6px_-6px_12px_rgba(255,255,255,0.8)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.4),_-6px_-6px_12px_rgba(255,255,255,0.02)] flex flex-col h-full overflow-hidden">
+      {/* Main Console Area */}
+      <div className="flex-1 bg-[#e8edf2] dark:bg-[#121a2e] flex flex-col h-full overflow-hidden">
         <header className="h-20 flex items-center justify-between px-8 border-b border-slate-200/10 dark:border-slate-800/10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <a
@@ -363,7 +361,7 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8 space-y-8">
+        <main className={`flex-1 p-8 overflow-hidden ${activeTab === "overview" ? "overflow-y-auto space-y-8" : "flex flex-col"}`}>
           {activeTab === "overview" && statsComputed && (
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -24,6 +24,8 @@ class UserBase(BaseModel):
     isSuspended: bool = False
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     password: Optional[str] = None # For email/password auth (hashed)
+    reminderEmailsEnabled: Optional[bool] = True
+    pushSubscriptions: List[dict] = []
 
 class UserCreate(UserBase):
     email: str
@@ -45,6 +47,9 @@ class Session(BaseModel):
     duration: int = 60
     cost: int = 1
     startedAt: Optional[datetime] = None
+    notified5Min: Optional[bool] = False
+    notified30MinEmail: Optional[bool] = False
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 class Message(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)

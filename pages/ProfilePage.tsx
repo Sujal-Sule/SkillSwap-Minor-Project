@@ -16,6 +16,7 @@ import {
   CheckCircleIcon,
   CurrencyDollarIcon,
   ShieldCheckIcon,
+  BellIcon,
 } from "../components/icons";
 
 interface ProfilePageProps {
@@ -27,16 +28,51 @@ interface ProfilePageProps {
   openEditModal: () => void;
 }
 
+const ensureDate = (val: any): Date => {
+  if (!val) return new Date();
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? new Date() : val;
+  }
+  if (typeof val === "string") {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+  if (val && typeof val === "object") {
+    if (val.$date) {
+      const d = new Date(val.$date);
+      return isNaN(d.getTime()) ? new Date() : d;
+    }
+    if (typeof val.toDate === "function") {
+      const d = val.toDate();
+      return isNaN(d.getTime()) ? new Date() : d;
+    }
+    if (val.seconds) {
+      return new Date(val.seconds * 1000);
+    }
+  }
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? new Date() : d;
+};
+
 const ProfilePage: React.FC<ProfilePageProps> = ({
   ratings,
   users,
   tokenTransactions,
   openEditModal,
 }) => {
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser, updateUser } = useContext(AuthContext);
   const [tokenFilter, setTokenFilter] = useState<"all" | "earned" | "spent">(
     "all",
   );
+
+  const toggleReminderEmails = async () => {
+    if (!currentUser || !updateUser) return;
+    const currentVal = currentUser.reminderEmailsEnabled !== false;
+    await updateUser({
+      ...currentUser,
+      reminderEmailsEnabled: !currentVal,
+    });
+  };
 
   if (!currentUser) return null;
 
@@ -60,7 +96,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const myTransactions = useMemo(() => {
     return tokenTransactions
       .filter((t) => t.userId === currentUser.id)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      .sort((a, b) => ensureDate(b.timestamp).getTime() - ensureDate(a.timestamp).getTime());
   }, [tokenTransactions, currentUser.id]);
 
   const filteredTransactions = myTransactions.filter((t) => {
@@ -79,14 +115,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const currentMonthEarned = myTransactions
     .filter(
       (t) =>
-        t.type === "earned" && t.timestamp.getMonth() === new Date().getMonth(),
+        t.type === "earned" && ensureDate(t.timestamp).getMonth() === new Date().getMonth(),
     )
     .reduce((acc, t) => acc + t.amount, 0);
 
   const currentMonthSessions = myTransactions.filter(
     (t) =>
       t.description.toLowerCase().includes("session") &&
-      t.timestamp.getMonth() === new Date().getMonth(),
+      ensureDate(t.timestamp).getMonth() === new Date().getMonth(),
   ).length;
 
   const swapperBadge = useMemo(() => {
@@ -212,6 +248,40 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     Admin
                   </span>
                 )}
+              </div>
+            </div>
+
+            {/* Preferences Panel */}
+            <div className="p-6 rounded-[28px] border border-slate-200/10 dark:border-slate-800/10 bg-background shadow-[6px_6px_16px_rgba(163,177,198,0.35),_-6px_-6px_16px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_16px_rgba(0,0,0,0.5),_-6px_-6px_16px_rgba(255,255,255,0.03)] space-y-4">
+              <h3 className="text-xs font-black text-text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                <BellIcon className="w-4 h-4 text-sky-500" />
+                Notification Preferences
+              </h3>
+              <div className="flex items-center justify-between p-3.5 bg-background border border-slate-200/10 dark:border-slate-800/10 rounded-2xl shadow-[inset_2px_2px_5px_rgba(163,177,198,0.2),_inset_-2px_-2px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.45),_inset_-2px_-2px_5px_rgba(255,255,255,0.02)]">
+                <div className="flex-1 pr-2">
+                  <div className="font-bold text-text-primary text-xs">
+                    Reminder Emails
+                  </div>
+                  <div className="text-[10px] text-text-muted mt-0.5 leading-tight font-semibold">
+                    Get email reminders for scheduled sessions and re-engagement updates
+                  </div>
+                </div>
+                <button
+                  onClick={toggleReminderEmails}
+                  className={`w-10 h-6 rounded-full p-1 transition-all duration-300 relative ${
+                    currentUser.reminderEmailsEnabled !== false
+                      ? "bg-emerald-500 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.3)]"
+                      : "bg-slate-300 dark:bg-slate-700 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.3)]"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-300 transform ${
+                      currentUser.reminderEmailsEnabled !== false
+                        ? "translate-x-4"
+                        : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 
@@ -467,12 +537,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                           </div>
                           <div className="text-[9px] text-text-muted mt-0.5 flex items-center gap-1.5 font-bold uppercase tracking-wider">
                             <ClockIcon className="w-3 h-3 text-text-muted/80" />
-                            {transaction.timestamp.toLocaleDateString(undefined, {
+                            {ensureDate(transaction.timestamp).toLocaleDateString(undefined, {
                               month: "short",
                               day: "numeric",
                             })}
                             <span className="w-0.5 h-0.5 rounded-full bg-border" />
-                            {transaction.timestamp.toLocaleTimeString(undefined, {
+                            {ensureDate(transaction.timestamp).toLocaleTimeString(undefined, {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}

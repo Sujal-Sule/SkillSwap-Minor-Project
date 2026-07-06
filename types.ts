@@ -27,6 +27,7 @@ export interface User {
     isAdmin?: boolean;
     isSuspended?: boolean;
     email?: string; // Visible to admin
+    reminderEmailsEnabled?: boolean;
 }
 
 export interface Message {

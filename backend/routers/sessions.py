@@ -59,6 +59,7 @@ async def propose_session(session: Session = Body(...), current_user: UserInDB =
     session_dict["proposerId"] = current_user.id
     # Default status proposed
     session_dict["status"] = "proposed" 
+    session_dict["createdAt"] = datetime.utcnow()
     
     res = await db.sessions.insert_one(session_dict)
     created = await db.sessions.find_one({"_id": res.inserted_id})

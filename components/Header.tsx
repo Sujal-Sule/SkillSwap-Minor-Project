@@ -33,11 +33,11 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
 
   return (
-    <header className="fixed top-4 left-4 right-4 z-40 max-w-7xl mx-auto">
+    <header className="fixed top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-40 max-w-7xl mx-auto">
       <div
         className="w-full rounded-[24px] bg-background/95 dark:bg-background/90 backdrop-blur-md border border-slate-200/20 dark:border-slate-800/10 transition-all duration-300 shadow-[6px_6px_16px_rgba(163,177,198,0.35),_-6px_-6px_16px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_16px_rgba(0,0,0,0.5),_-6px_-6px_16px_rgba(255,255,255,0.03)]"
       >
-        <div className="flex items-center justify-between h-20 px-8">
+        <div className="flex items-center justify-between h-20 px-4 sm:px-8">
           {/* Left side: Logo and Nav */}
           <div className="flex items-center gap-12">
             <div
@@ -126,7 +126,7 @@ const Header: React.FC<HeaderProps> = ({
 
                 <button
                   onClick={logout}
-                  className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-background text-text-muted hover:text-rose-500 border border-slate-200/10 dark:border-slate-800/10 shadow-[3px_3px_8px_rgba(163,177,198,0.3),_-3px_-3px_8px_rgba(255,255,255,0.8)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.4),_-3px_-3px_8px_rgba(255,255,255,0.02)] active:scale-95 transition-all"
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-background text-text-muted hover:text-rose-500 border border-slate-200/10 dark:border-slate-800/10 shadow-[3px_3px_8px_rgba(163,177,198,0.3),_-3px_-3px_8px_rgba(255,255,255,0.8)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.4),_-3px_-3px_8px_rgba(255,255,255,0.02)] active:scale-95 transition-all"
                   title="Logout"
                 >
                   <svg

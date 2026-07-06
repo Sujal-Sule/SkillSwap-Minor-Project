@@ -52,7 +52,7 @@ async def get_user_profile(user_id: str):
         
     user_data = user_snap.to_dict()
     user_data['id'] = user_snap.id
-    user_data['isOnline'] = user_id in manager.active_connections
+    user_data['isOnline'] = user_id in manager.active_connections or user_data.get('email') in {"kushalkher464@gmail.com", "sujalsule31@gmail.com", "john@gmail.com", "vaidiksule@gmail.com", "mansivinchurkar09@gmail.com"}
     return UserInDB(**user_data)
 
 @router.get("/", response_model=List[UserInDB])
@@ -69,7 +69,7 @@ async def search_users(skill: Optional[str] = Query(None)):
         try:
             user_data = doc.to_dict()
             user_data['id'] = doc.id
-            user_data['isOnline'] = doc.id in manager.active_connections
+            user_data['isOnline'] = doc.id in manager.active_connections or user_data.get('email') in {"kushalkher464@gmail.com", "sujalsule31@gmail.com", "john@gmail.com", "vaidiksule@gmail.com", "mansivinchurkar09@gmail.com"}
             
             if skill:
                 skill_lower = skill.lower()
@@ -86,3 +86,39 @@ async def search_users(skill: Optional[str] = Query(None)):
             continue
             
     return users
+
+@router.post("/subscribe-push")
+async def subscribe_push(subscription: dict = Body(...), current_user: UserInDB = Depends(get_current_user)):
+    db = get_firestore_db()
+    user_ref = db.collection('users').document(current_user.id)
+    user_snap = user_ref.get()
+    if not user_snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_data = user_snap.to_dict()
+    subs = user_data.get("pushSubscriptions", [])
+    
+    # Avoid duplicate subscriptions by checking the endpoint
+    if not any(s.get("endpoint") == subscription.get("endpoint") for s in subs):
+        subs.append(subscription)
+        user_ref.update({"pushSubscriptions": subs})
+        
+    return {"status": "success"}
+
+@router.post("/unsubscribe-push")
+async def unsubscribe_push(subscription: dict = Body(...), current_user: UserInDB = Depends(get_current_user)):
+    db = get_firestore_db()
+    user_ref = db.collection('users').document(current_user.id)
+    user_snap = user_ref.get()
+    if not user_snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user_data = user_snap.to_dict()
+    subs = user_data.get("pushSubscriptions", [])
+    
+    # Filter out subscription with matching endpoint
+    new_subs = [s for s in subs if s.get("endpoint") != subscription.get("endpoint")]
+    if len(new_subs) < len(subs):
+        user_ref.update({"pushSubscriptions": new_subs})
+        
+    return {"status": "success"}

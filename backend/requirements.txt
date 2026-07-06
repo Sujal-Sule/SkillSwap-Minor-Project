@@ -12,3 +12,6 @@ httpx==0.26.0
 certifi
 bcrypt
 websockets
+pywebpush==1.14.0
+cryptography
+

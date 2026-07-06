@@ -4,12 +4,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import connect_to_mongo, close_mongo_connection
 
+import asyncio
+from .services.scheduler import start_scheduler_loop
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     await connect_to_mongo()
+    scheduler_task = asyncio.create_task(start_scheduler_loop())
     yield
     # Shutdown
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
     await close_mongo_connection()
 
 from .routers import auth, users, connections, sessions, chat, whiteboard, notifications, turn
