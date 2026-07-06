@@ -386,6 +386,8 @@ const App: React.FC = () => {
     dismissedSessionsRef.current = [...dismissedRatingSessionIds];
   }
 
+  const initialCompletedSessionIdsRef = useRef<string[]>([]);
+
   useEffect(() => {
     localStorage.setItem("dismissedRatingSessionIds", JSON.stringify(dismissedRatingSessionIds));
   }, [dismissedRatingSessionIds]);
@@ -431,14 +433,22 @@ const App: React.FC = () => {
         api.get(`/users/${currentUser.id}/ratings`, { skipCache: options?.skipCache }),
       ]);
       setAllUsers(usersRes.map((u: any) => ({ ...u, id: u._id || u.id })));
-      setSessions(
-        sessionsRes.map((s: any) => ({
-          ...s,
-          id: s._id || s.id,
-          scheduledTime: parseAsUTC(s.scheduledTime),
-          startedAt: s.startedAt ? parseAsUTC(s.startedAt) : undefined,
-        })),
-      );
+      
+      const parsedSessions = sessionsRes.map((s: any) => ({
+        ...s,
+        id: s._id || s.id,
+        scheduledTime: parseAsUTC(s.scheduledTime),
+        startedAt: s.startedAt ? parseAsUTC(s.startedAt) : undefined,
+      }));
+      setSessions(parsedSessions);
+
+      // On first load, catalog all pre-existing completed sessions to prevent them from showing rating popups
+      if (initialCompletedSessionIdsRef.current.length === 0) {
+        initialCompletedSessionIdsRef.current = parsedSessions
+          .filter((s: any) => s.status === "completed")
+          .map((s: any) => s.id);
+      }
+
       setConnectionRequests(
         connectionsRes.map((c: any) => ({ ...c, id: c._id || c.id })),
       );
@@ -503,6 +513,9 @@ const App: React.FC = () => {
     if (currentUser) {
       fetchData();
       registerPushNotifications();
+    } else {
+      initialCompletedSessionIdsRef.current = [];
+      dismissedSessionsRef.current = [];
     }
   }, [currentUser]);
 
@@ -520,6 +533,7 @@ const App: React.FC = () => {
 
     const unratedSession = sessions.find((s) => {
       if (s.status !== "completed") return false;
+      if (initialCompletedSessionIdsRef.current.includes(s.id)) return false;
       if (dismissedRatingSessionIds.includes(s.id) || dismissedSessionsRef.current.includes(s.id)) return false;
       if (s.studentId === currentUser.id) {
         return !s.studentHasRated;
