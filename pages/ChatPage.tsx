@@ -514,9 +514,10 @@ const ChatPage: React.FC<ChatPageProps> = ({
                     );
                   }
                   if (msg.messageType === "session_card" && msg.session) {
+                    const latestSession = sessions.find((s) => s.id === msg.session?.id) || msg.session;
                     return (
                       <div key={msg.id} className="flex justify-center">
-                        {renderSessionCard(msg.session)}
+                        {renderSessionCard(latestSession)}
                       </div>
                     );
                   }
