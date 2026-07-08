@@ -504,8 +504,14 @@ const App: React.FC = () => {
 
       await api.post("/users/subscribe-push", subscription);
       console.log("Successfully subscribed to Web Push notifications.");
-    } catch (err) {
-      console.error("Failed to register Web Push:", err);
+    } catch (err: any) {
+      if (err.name === "AbortError" || err.message?.includes("push service error")) {
+        console.warn(
+          "Web Push registration was blocked by the browser. If you are using Brave or a similar privacy browser, please make sure 'Use Google Services for Push Messaging' is enabled in your browser settings (Settings -> Privacy and security)."
+        );
+      } else {
+        console.error("Failed to register Web Push:", err);
+      }
     }
   };
 
@@ -1022,17 +1028,21 @@ const App: React.FC = () => {
 
   const handleMarkAsRead = async (partnerId: string) => {
     if (!currentUser) return;
+    console.log(`[Chat] Marking conversation with partner ${partnerId} as read.`);
     try {
       await api.put(`/chat/${partnerId}/read`);
-      setMessages((prev) =>
-        prev.map((m) =>
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
           m.senderId === partnerId && m.receiverId === currentUser.id
             ? { ...m, isRead: true }
-            : m,
-        ),
-      );
+            : m
+        );
+        const remainingUnread = updated.filter(m => m.receiverId === currentUser.id && !m.isRead).length;
+        console.log(`[Chat] Local state updated. Remaining unread messages for current user: ${remainingUnread}`);
+        return updated;
+      });
     } catch (error) {
-      console.error("Failed to mark as read", error);
+      console.error("[Chat] Failed to mark messages as read:", error);
     }
   };
 
@@ -1076,8 +1086,13 @@ const App: React.FC = () => {
 
   const unreadMessagesCount = useMemo(() => {
     if (!currentUser) return 0;
-    return messages.filter((m) => m.receiverId === currentUser.id && !m.isRead)
-      .length;
+    const unread = messages.filter((m) => m.receiverId === currentUser.id && !m.isRead);
+    if (unread.length > 0) {
+      console.log(`[Chat] Found ${unread.length} unread messages for user ${currentUser.id}:`, unread.map(m => ({ id: m.id, sender: m.senderId, text: m.text, isRead: m.isRead })));
+    } else {
+      console.log("[Chat] No unread messages found for current user.");
+    }
+    return unread.length;
   }, [messages, currentUser]);
 
   const userNavItems = useMemo(

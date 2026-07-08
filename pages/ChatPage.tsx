@@ -169,7 +169,9 @@ const ChatPage: React.FC<ChatPageProps> = ({
       const hasUnread = activeConversationMessages.some(
         (m) => m.senderId === activeChatPartner.id && !m.isRead,
       );
+      console.log(`[ChatPage] Checking active conversation with partner ${activeChatPartner.name} (${activeChatPartner.id}). hasUnread=${hasUnread}`);
       if (hasUnread) {
+        console.log(`[ChatPage] Triggering markAsRead for partner ${activeChatPartner.id}`);
         markAsRead(activeChatPartner.id);
       }
     }
