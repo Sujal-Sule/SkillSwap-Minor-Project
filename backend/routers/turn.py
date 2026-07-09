@@ -52,7 +52,7 @@ async def get_turn_credentials():
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"https://skillswap.metered.live/api/v1/turn/credentials?apiKey={api_key}"
+                f"https://skill-swap.metered.live/api/v1/turn/credentials?apiKey={api_key}"
             )
             response.raise_for_status()
             servers = response.json()

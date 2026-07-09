@@ -112,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                         "senderId": user_id,
                         "receiverId": receiver_id,
                         "text": text,
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.utcnow().isoformat(),
                         "messageType": 'signal',
                     }
                     await manager.send_personal_message(ephemeral_msg, receiver_id)
@@ -123,7 +123,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     "senderId": user_id,
                     "receiverId": receiver_id,
                     "text": text,
-                    "timestamp": datetime.now(),
+                    "timestamp": datetime.utcnow(),
                     "messageType": msg_type,
                     "session": message_data.get('session'),
                     "isRead": False

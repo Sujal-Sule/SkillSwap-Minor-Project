@@ -112,7 +112,7 @@ async def accept_session(session_id: str, current_user: UserInDB = Depends(get_c
         type="spent",
         amount=1,
         description=f"Scheduled session",
-        timestamp=datetime.now(),
+        timestamp=datetime.utcnow(),
         sessionId=str(sess_id)
     )
     await db.transactions.insert_one(transaction.model_dump(by_alias=True, exclude={"id"}))
@@ -177,7 +177,7 @@ async def complete_session(session_id: str, current_user: UserInDB = Depends(get
         type="earned",
         amount=1,
         description=f"Completed teaching session",
-        timestamp=datetime.now(),
+        timestamp=datetime.utcnow(),
         sessionId=str(sess_id)
     )
     print(f"DEBUG: Logging transaction: {transaction.model_dump()}")
@@ -207,7 +207,7 @@ async def start_session(session_id: str, current_user: UserInDB = Depends(get_cu
         return Session(**session)
 
     # Set startedAt
-    started_at = datetime.now()
+    started_at = datetime.utcnow()
     await db.sessions.update_one({"_id": sess_id}, {"$set": {"startedAt": started_at, "status": "active"}})
     await notify_session_update(str(sess_id), session['studentId'], session['teacherId'], "active")
     updated = await db.sessions.find_one({"_id": sess_id})

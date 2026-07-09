@@ -71,7 +71,7 @@ def create_notification(user_id: str, type: str, message: str, reference_id: str
         type=type,
         message=message,
         referenceId=reference_id,
-        createdAt=datetime.now(),
+        createdAt=datetime.utcnow(),
         isRead=False
     )
     # Convert to dict and handle datetime

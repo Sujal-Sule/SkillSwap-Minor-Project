@@ -32,6 +32,19 @@ const ICE_CONFIG = {
   iceCandidatePoolSize: 10, // Increased for better candidate gathering
 };
 
+const parseAsUTC = (dateInput: string | Date | undefined): Date => {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return dateInput;
+  if (
+    dateInput.endsWith("Z") ||
+    /[\+\-]\d{2}:\d{2}$/.test(dateInput) ||
+    /[\+\-]\d{4}$/.test(dateInput)
+  ) {
+    return new Date(dateInput);
+  }
+  return new Date(dateInput + "Z");
+};
+
 // Network quality detection
 function calcNetworkQuality(rtt: number, packetLoss: number): 0 | 1 | 2 | 3 {
   if (rtt === 0 && packetLoss === 0) return 0;
@@ -54,7 +67,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [remainingTime, setRemainingTime] = useState<number>(session.duration * 60);
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(
-    session.startedAt ? new Date(session.startedAt).toISOString() : null
+    session.startedAt ? parseAsUTC(session.startedAt).toISOString() : null
   );
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [effectsActive, setEffectsActive] = useState(false);
@@ -137,7 +150,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
       try {
         const updatedSession = await api.put(`/sessions/${session.id}/start`);
         if (updatedSession && updatedSession.startedAt) {
-          setSessionStartedAt(new Date(updatedSession.startedAt).toISOString());
+          setSessionStartedAt(parseAsUTC(updatedSession.startedAt).toISOString());
         }
       } catch (error) {
         console.error("Error starting session on backend", error);
@@ -149,7 +162,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
   // Countdown timer based on actual startedAt or scheduledTime and duration
   useEffect(() => {
     const actualStartTime = sessionStartedAt || session.startedAt || session.scheduledTime;
-    const startTimeMs = new Date(actualStartTime).getTime();
+    const startTimeMs = parseAsUTC(actualStartTime).getTime();
     const durationMs = session.duration * 60 * 1000;
     const endTimeMs = startTimeMs + durationMs;
 
@@ -161,7 +174,9 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         const secondsLeft = Math.floor((endTimeMs - now) / 1000);
         if (secondsLeft <= 0) {
           setRemainingTime(0);
-          handleEndSessionRef.current();
+          if (sessionStartedAt || session.startedAt) {
+            handleEndSessionRef.current();
+          }
         } else {
           setRemainingTime(secondsLeft);
         }
