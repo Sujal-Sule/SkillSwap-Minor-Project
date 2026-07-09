@@ -216,7 +216,33 @@ async def send_user_reengagement_emails():
         if not email:
             continue
 
-        # Check last sent time
+        # 1. Inactivity Check (only users inactive on the app for > 30 days)
+        last_active_str = user_data.get("lastActive")
+        last_active = None
+        if last_active_str:
+            try:
+                last_active = datetime.fromisoformat(last_active_str)
+            except Exception:
+                pass
+        
+        if not last_active:
+            created_at = user_data.get("createdAt")
+            if isinstance(created_at, datetime):
+                last_active = created_at
+            elif isinstance(created_at, str):
+                try:
+                    last_active = datetime.fromisoformat(created_at)
+                except Exception:
+                    pass
+
+        if not last_active:
+            last_active = now
+
+        inactive_seconds = (now - last_active).total_seconds()
+        if inactive_seconds <= 30 * 86400:
+            continue
+
+        # 2. Check last sent time (send re-engagement emails at most every 2 months / 60 days)
         last_sent_str = user_data.get("lastReminderEmailSent")
         should_send = False
         if not last_sent_str:
@@ -228,8 +254,8 @@ async def send_user_reengagement_emails():
                 else:
                     last_sent = datetime.fromisoformat(last_sent_str)
                 
-                # Check if 24 hours have passed
-                if (now - last_sent).total_seconds() > 86400:
+                # Check if 60 days have passed
+                if (now - last_sent).total_seconds() > 60 * 86400:
                     should_send = True
             except Exception:
                 should_send = True

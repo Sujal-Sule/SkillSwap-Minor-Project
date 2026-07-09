@@ -26,6 +26,7 @@ class UserBase(BaseModel):
     password: Optional[str] = None # For email/password auth (hashed)
     reminderEmailsEnabled: Optional[bool] = True
     pushSubscriptions: List[dict] = []
+    lastActive: Optional[str] = None
 
 class UserCreate(UserBase):
     email: str

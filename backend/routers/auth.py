@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Body, Depends
 from ..firebase_setup import verify_token, get_firestore_db
 from ..models import UserInDB, UserCreate
@@ -49,6 +50,7 @@ async def login(request: LoginRequest = Body(...)):
         user_doc_snap = user_ref.get()
         
         is_new = False
+        now_str = datetime.utcnow().isoformat()
         if not user_doc_snap.exists:
             # Create new user
             is_new = True
@@ -63,14 +65,17 @@ async def login(request: LoginRequest = Body(...)):
                 learns=[],
                 tokens=5, # Sign up bonus
                 connections=[],
-                isOnline=True
+                isOnline=True,
+                lastActive=now_str
             )
             # Firestore uses set()
             user_dict = new_user.model_dump(by_alias=True)
             user_ref.set(user_dict)
             user_data = user_dict
         else:
+            user_ref.update({"lastActive": now_str})
             user_data = user_doc_snap.to_dict()
+            user_data["lastActive"] = now_str
         
         return {
             "token": request.idToken, # Reuse ID token for session for simplicity in this demo

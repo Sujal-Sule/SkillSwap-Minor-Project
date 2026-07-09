@@ -187,9 +187,9 @@ const pointToLineDistance = (p: Point, a: Point, b: Point) => {
 
 const getFontSize = (width: number) => width + 12; // Helper to sync font size
 
-const isPointInElement = (x: number, y: number, element: Element) => {
+const isPointInElement = (x: number, y: number, element: Element, eraserRadius = 0) => {
   const p = { x, y };
-  const threshold = Math.max(element.width, 10); // Hit tolerance
+  const threshold = Math.max(element.width, 10) + eraserRadius; // Hit tolerance
 
   switch (element.type) {
     case "line":
@@ -274,9 +274,10 @@ const isPointInElement = (x: number, y: number, element: Element) => {
 
 interface WhiteboardProps {
   sessionId?: string;
+  isReadOnly?: boolean;
 }
 
-const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
+const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId, isReadOnly = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -307,6 +308,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
           // Ignore signals on whiteboard WS — they are handled by the chat WS in App.tsx
           return;
         }
+        if (data.type === "delete" || data.deleted) {
+          setElements((prev) => prev.filter((el) => el.id !== data.id));
+          return;
+        }
         // Drawing element
         setElements((prev) => {
           if (prev.some((el) => el.id === data.id)) {
@@ -328,6 +333,23 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   const [elements, setElements] = useState<Element[]>([]);
   const [history, setHistory] = useState<Element[][]>([]); // Undo stack
   const [redoStack, setRedoStack] = useState<Element[][]>([]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const saved = localStorage.getItem(`whiteboard_elements_${sessionId}`);
+    if (saved) {
+      try {
+        setElements(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse saved whiteboard elements", e);
+      }
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    localStorage.setItem(`whiteboard_elements_${sessionId}`, JSON.stringify(elements));
+  }, [elements, sessionId]);
 
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.classList.contains("dark")
@@ -453,6 +475,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   };
 
   const getAdjustedColor = (c: string) => {
+    if (!c) return isDark ? "#FFFFFF" : "#0F172A";
     if (!isDark) {
       if (c.toUpperCase() === "#FFFFFF") return "#0F172A";
     } else {
@@ -591,6 +614,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   // --- Interaction Handlers ---
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (isReadOnly) return;
     // If we were writing text and clicked outside, commit it
     if (writingText) {
       commitText();
@@ -635,6 +659,26 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       return;
     }
 
+    if (tool === "eraser") {
+      const clickedElement = [...elements]
+        .reverse()
+        .find((el) => isPointInElement(point.x, point.y, el, lineWidth / 2));
+
+      if (clickedElement) {
+        setHistory((prev) => [...prev, elements]);
+        setRedoStack([]);
+        setElements((prev) => prev.filter((el) => el.id !== clickedElement.id));
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({ id: clickedElement.id, type: "delete" })
+          );
+        }
+      }
+      setIsDrawing(true);
+      return;
+    }
+
     setIsDrawing(true);
 
     const newElement: Element = {
@@ -657,6 +701,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    if (isReadOnly) return;
     const point = screenToWorld(e.clientX, e.clientY);
 
     // Hover detection for Move tool
@@ -712,6 +757,25 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       return;
     }
 
+    if (tool === "eraser" && isDrawing) {
+      const clickedElement = [...elements]
+        .reverse()
+        .find((el) => isPointInElement(point.x, point.y, el, lineWidth / 2));
+
+      if (clickedElement) {
+        setHistory((prev) => [...prev, elements]);
+        setRedoStack([]);
+        setElements((prev) => prev.filter((el) => el.id !== clickedElement.id));
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({ id: clickedElement.id, type: "delete" })
+          );
+        }
+      }
+      return;
+    }
+
     if (currentElement) {
       if (tool === "pen" || tool === "eraser") {
         setCurrentElement((prev) =>
@@ -737,6 +801,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (isReadOnly) return;
     if (tool !== "text") {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     }
@@ -947,129 +1012,131 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ sessionId }) => {
       )}
 
       {/* Toolbar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md p-2.5 rounded-[24px] border border-slate-200/10 dark:border-slate-800/10 shadow-[6px_6px_15px_rgba(163,177,198,0.35),_-6px_-6px_15px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_15px_rgba(0,0,0,0.5)] flex flex-col gap-3 items-center z-10">
-        {/* Tools */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setTool("move")}
-            className={`p-2 rounded-xl transition-all ${tool === "move" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Select & Move"
-          >
-            <CursorArrowIcon className="w-5 h-5" />
-          </button>
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
-          <button
-            onClick={() => setTool("pan")}
-            className={`p-2 rounded-xl transition-all ${tool === "pan" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Pan Canvas"
-          >
-            <HandRaisedIcon className="w-5 h-5" />
-          </button>
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
-          <button
-            onClick={() => setTool("pen")}
-            className={`p-2 rounded-xl transition-all ${tool === "pen" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Pen"
-          >
-            <PencilIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setTool("eraser")}
-            className={`p-2 rounded-xl transition-all ${tool === "eraser" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Eraser"
-          >
-            <EraserIcon className="w-5 h-5" />
-          </button>
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
-          <button
-            onClick={() => setTool("text")}
-            className={`p-2 rounded-xl transition-all ${tool === "text" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Text"
-          >
-            <TextIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setTool("line")}
-            className={`p-2 rounded-xl transition-all ${tool === "line" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Line"
-          >
-            <LineIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setTool("rect")}
-            className={`p-2 rounded-xl transition-all ${tool === "rect" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Rectangle"
-          >
-            <RectIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setTool("circle")}
-            className={`p-2 rounded-xl transition-all ${tool === "circle" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
-            title="Circle"
-          >
-            <CircleIcon className="w-5 h-5" />
-          </button>
-        </div>
+      {!isReadOnly && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md p-2.5 rounded-[24px] border border-slate-200/10 dark:border-slate-800/10 shadow-[6px_6px_15px_rgba(163,177,198,0.35),_-6px_-6px_15px_rgba(255,255,255,0.85)] dark:shadow-[6px_6px_15px_rgba(0,0,0,0.5)] flex flex-col gap-3 items-center z-10">
+          {/* Tools */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTool("move")}
+              className={`p-2 rounded-xl transition-all ${tool === "move" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Select & Move"
+            >
+              <CursorArrowIcon className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+            <button
+              onClick={() => setTool("pan")}
+              className={`p-2 rounded-xl transition-all ${tool === "pan" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Pan Canvas"
+            >
+              <HandRaisedIcon className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+            <button
+              onClick={() => setTool("pen")}
+              className={`p-2 rounded-xl transition-all ${tool === "pen" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Pen"
+            >
+              <PencilIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTool("eraser")}
+              className={`p-2 rounded-xl transition-all ${tool === "eraser" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Eraser"
+            >
+              <EraserIcon className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+            <button
+              onClick={() => setTool("text")}
+              className={`p-2 rounded-xl transition-all ${tool === "text" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Text"
+            >
+              <TextIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTool("line")}
+              className={`p-2 rounded-xl transition-all ${tool === "line" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Line"
+            >
+              <LineIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTool("rect")}
+              className={`p-2 rounded-xl transition-all ${tool === "rect" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Rectangle"
+            >
+              <RectIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTool("circle")}
+              className={`p-2 rounded-xl transition-all ${tool === "circle" ? "bg-sky-600 text-white shadow-[inset_1px_1px_3px_rgba(0,0,0,0.2)]" : "text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50"}`}
+              title="Circle"
+            >
+              <CircleIcon className="w-5 h-5" />
+            </button>
+          </div>
 
-        {/* Second Row: Colors, Size & Actions */}
-        <div className="flex items-center gap-4 pt-2 border-t border-slate-200/10 dark:border-slate-800/10 w-full justify-between px-2">
-          {/* Colors */}
-          <div className="flex gap-1.5">
-            {currentColors.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`w-5 h-5 rounded-full border border-slate-200/50 dark:border-slate-700/50 transition-transform ${color === c ? "ring-2 ring-sky-500 scale-110" : "hover:scale-110"}`}
-                style={{ backgroundColor: c }}
-                title={c}
+          {/* Second Row: Colors, Size & Actions */}
+          <div className="flex items-center gap-4 pt-2 border-t border-slate-200/10 dark:border-slate-800/10 w-full justify-between px-2">
+            {/* Colors */}
+            <div className="flex gap-1.5">
+              {currentColors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-5 h-5 rounded-full border border-slate-200/50 dark:border-slate-700/50 transition-transform ${color === c ? "ring-2 ring-sky-500 scale-110" : "hover:scale-110"}`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+
+            {/* Stroke Size Slider */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
+                Size
+              </span>
+              <input
+                type="range"
+                min="1"
+                max="50"
+                value={lineWidth}
+                onChange={(e) => handleSizeChange(parseInt(e.target.value))}
+                className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                title={`Size: ${lineWidth}px`}
               />
-            ))}
-          </div>
+            </div>
 
-          {/* Stroke Size Slider */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
-              Size
-            </span>
-            <input
-              type="range"
-              min="1"
-              max="50"
-              value={lineWidth}
-              onChange={(e) => handleSizeChange(parseInt(e.target.value))}
-              className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
-              title={`Size: ${lineWidth}px`}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 border-l border-slate-200/10 dark:border-slate-800/10 pl-4">
-            <button
-              onClick={undo}
-              disabled={history.length === 0}
-              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
-              title="Undo"
-            >
-              <UndoIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={redo}
-              disabled={redoStack.length === 0}
-              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
-              title="Redo"
-            >
-              <RedoIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={clearBoard}
-              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 ml-1"
-              title="Clear Board"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
+            {/* Actions */}
+            <div className="flex items-center gap-1 border-l border-slate-200/10 dark:border-slate-800/10 pl-4">
+              <button
+                onClick={undo}
+                disabled={history.length === 0}
+                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
+                title="Undo"
+              >
+                <UndoIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={redo}
+                disabled={redoStack.length === 0}
+                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-200/50 dark:hover:bg-slate-800/50 disabled:opacity-30 disabled:hover:bg-transparent"
+                title="Redo"
+              >
+                <RedoIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={clearBoard}
+                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 ml-1"
+                title="Clear Board"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Zoom Controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-1 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/10 dark:border-slate-800/10 shadow-[4px_4px_10px_rgba(163,177,198,0.25),_-4px_-4px_10px_rgba(255,255,255,0.85)] dark:shadow-[4px_4px_10px_rgba(0,0,0,0.4)] z-10">

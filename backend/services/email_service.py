@@ -151,7 +151,7 @@ def send_email(to_email: str, subject: str, body_html: str, body_text: str = Non
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = smtp_user
+            msg["From"] = f"SkillSwap <{smtp_user}>"
             msg["To"] = to_email
 
             part1 = MIMEText(body_text, "plain")

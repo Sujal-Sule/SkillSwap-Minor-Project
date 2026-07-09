@@ -130,6 +130,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         sender: currentUser.id,
         payload,
         timestamp: Date.now(),
+        signalId: `${currentUser.id}-${otherUser.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       };
       window.dispatchEvent(
         new CustomEvent("send-webrtc-signal", { detail: signal })
@@ -385,15 +386,208 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         }
 
         // 3. Create PeerConnection with optimal config
-        console.log("[WebRTC] Creating RTCPeerConnection with relay transport policy (enforced TURN)...");
+        const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const transportPolicy = isLocalhost ? "all" : "relay";
+        console.log(`[WebRTC] Creating RTCPeerConnection with ${transportPolicy} transport policy...`);
         const pc = new RTCPeerConnection({
           iceServers,
-          iceTransportPolicy: "relay",
+          iceTransportPolicy: transportPolicy,
           bundlePolicy: "max-bundle",
           rtcpMuxPolicy: "require",
           iceCandidatePoolSize: 10,
         });
         peerConnection.current = pc;
+
+        // Variables for signal handling & negotiation
+        const candidateQueue: RTCIceCandidateInit[] = [];
+        let isSettingRemoteDescription = false;
+        let isSettingRemoteAnswerPending = false;
+
+        const handleSignal = async (e: CustomEvent) => {
+          const data = e.detail;
+          if (data.sender === currentUser.id) return;
+
+          const pc = peerConnection.current;
+          if (!pc || pc.signalingState === "closed") return;
+
+          console.log(`[WebRTC] Incoming signal event: type=${data.type || "unknown"}`);
+          try {
+            if (data.payload && data.payload.type === "mode_change") {
+              console.log(`[WebRTC] Remote peer requested mode change to: ${data.payload.mode}`);
+              setViewMode(data.payload.mode);
+              return;
+            }
+
+            const { description, candidate } = data.payload || {};
+
+            if (description) {
+              if (description.type === "answer" && pc.signalingState === "stable") {
+                console.log("[WebRTC] Stale answer received in stable state. Ignoring.");
+                return;
+              }
+
+              const readyForOffer =
+                !makingOffer &&
+                (pc.signalingState === "stable" || isSettingRemoteAnswerPending);
+              const offerCollision =
+                description.type === "offer" && !readyForOffer;
+
+              ignoreOffer = !polite && offerCollision;
+              if (ignoreOffer) {
+                console.log("[WebRTC] Offer collision detected. Ignored because we are the impolite peer.");
+                return;
+              }
+
+              if (offerCollision) {
+                console.log("[WebRTC] Offer collision. Rolling back local description.");
+                await pc.setLocalDescription({ type: "rollback" });
+              }
+
+              isSettingRemoteAnswerPending = description.type === "answer";
+              isSettingRemoteDescription = true;
+              console.log(`[WebRTC] Applying remote description: type=${description.type}`);
+              await pc.setRemoteDescription(description);
+              isSettingRemoteDescription = false;
+              isSettingRemoteAnswerPending = false;
+
+              // Process queued candidates
+              if (candidateQueue.length > 0) {
+                console.log(`[WebRTC] Processing ${candidateQueue.length} queued remote candidates.`);
+                while (candidateQueue.length) {
+                  const buffered = candidateQueue.shift();
+                  if (buffered) {
+                    try {
+                      await pc.addIceCandidate(buffered);
+                    } catch (e) {
+                      console.warn("[WebRTC] Buffered candidate failed to apply", e);
+                    }
+                  }
+                }
+              }
+
+              if (description.type === "offer") {
+                console.log("[WebRTC] Remote offer applied. Creating answer description...");
+                await pc.setLocalDescription();
+                sendSignal({
+                  type: "description",
+                  description: pc.localDescription,
+                });
+              }
+            } else if (candidate) {
+              if (pc.remoteDescription && !isSettingRemoteDescription) {
+                try {
+                  console.log("[WebRTC] Applying remote ICE candidate immediately.");
+                  await pc.addIceCandidate(candidate);
+                  iceCandidatesRef.current.remote.push(candidate);
+                } catch (e) {
+                  if (!ignoreOffer) {
+                    console.warn("[WebRTC] ICE candidate application failed", e);
+                  }
+                }
+              } else {
+                console.log("[WebRTC] Remote description not set yet. Queueing candidate.");
+                candidateQueue.push(candidate);
+              }
+            }
+          } catch (err) {
+            console.error("[WebRTC] Signal handling error:", err);
+            isSettingRemoteDescription = false;
+            isSettingRemoteAnswerPending = false;
+          }
+        };
+
+        window.addEventListener("webrtc-signal", handleSignal as EventListener);
+        (window as any)._tempSignalHandler = handleSignal;
+
+        // Set up WebRTC event listeners immediately before adding any tracks
+        pc.onicecandidate = ({ candidate }) => {
+          if (candidate) {
+            console.log(`[WebRTC] ICE candidate gathered: ${candidate.candidate.substring(0, 60)}...`);
+            iceCandidatesRef.current.local.push(candidate);
+            sendSignal({ type: "candidate", candidate });
+          } else {
+            console.log("[WebRTC] ICE candidate gathering complete.");
+          }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          console.log(`[WebRTC] ICE Connection State changed to: ${pc.iceConnectionState}`);
+        };
+
+        pc.onicegatheringstatechange = () => {
+          console.log(`[WebRTC] ICE Gathering State changed to: ${pc.iceGatheringState}`);
+        };
+
+        pc.onnegotiationneeded = async () => {
+          if (makingOffer || pc.signalingState !== "stable") {
+            console.log(`[WebRTC] Negotiation deferred (makingOffer=${makingOffer}, signalingState=${pc.signalingState})`);
+            return;
+          }
+
+          try {
+            makingOffer = true;
+            console.log("[WebRTC] Creating local offer...");
+            await pc.setLocalDescription();
+            console.log(`[WebRTC] Local description set (type=${pc.localDescription?.type}). Sending signal...`);
+            sendSignal({
+              type: "description",
+              description: pc.localDescription,
+            });
+          } catch (err) {
+            console.error("[WebRTC] Negotiation error:", err);
+          } finally {
+            makingOffer = false;
+          }
+        };
+
+        pc.onconnectionstatechange = () => {
+          const state = pc.connectionState;
+          console.log(`[WebRTC] PeerConnection Connection State changed to: ${state}`);
+          switch (state) {
+            case "connecting":
+              setConnectionStatus("connecting");
+              break;
+            case "connected":
+              console.log(`[WebRTC] Successfully connected to partner: ${otherUser.name}!`);
+              setConnectionStatus("connected");
+              if (iceRestartTimeoutRef.current) {
+                clearTimeout(iceRestartTimeoutRef.current);
+                iceRestartTimeoutRef.current = null;
+              }
+              break;
+            case "disconnected":
+              console.warn(`[WebRTC] Connection with ${otherUser.name} disconnected. Reconnecting...`);
+              setConnectionStatus("reconnecting");
+              iceRestartTimeoutRef.current = setTimeout(() => {
+                if (pc?.connectionState === "disconnected") {
+                  console.warn("[WebRTC] Auto ICE restart triggered after 5s disconnect.");
+                  pc.restartIce();
+                }
+              }, 5000);
+              break;
+            case "failed":
+              console.error(`[WebRTC] Connection with ${otherUser.name} failed. Restarting ICE.`);
+              setConnectionStatus("failed");
+              pc.restartIce();
+              break;
+            case "closed":
+              console.log("[WebRTC] Connection closed.");
+              setConnectionStatus("failed");
+              break;
+          }
+        };
+
+        pc.ontrack = ({ track, streams }) => {
+          console.log(`[WebRTC] Remote track received: kind=${track.kind}, id=${track.id}`);
+          if (streams[0]) {
+            setRemoteStream(new MediaStream(streams[0].getTracks()));
+          }
+        };
+
+        // Create DataChannel early
+        const dc = pc.createDataChannel("control", { ordered: true });
+        setupDataChannel(dc);
+        pc.ondatachannel = (event) => setupDataChannel(event.channel);
 
         // 4. Add audio FIRST (priority)
         const audioTrack = stream ? stream.getAudioTracks()[0] : null;
@@ -433,190 +627,8 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           pc.addTransceiver("video", { direction: "recvonly" });
         }
 
-        // 6. Create DataChannel
-        const dc = pc.createDataChannel("control", { ordered: true });
-        setupDataChannel(dc);
-        pc.ondatachannel = (event) => setupDataChannel(event.channel);
-
-        // 7. Handle remote tracks
-        pc.ontrack = ({ track, streams }) => {
-          console.log(`[WebRTC] Remote track received: kind=${track.kind}, id=${track.id}`);
-          if (streams[0]) {
-            setRemoteStream(new MediaStream(streams[0].getTracks()));
-          }
-        };
-
-        // 8. IMPROVED: ICE candidate handling
-        pc.onicecandidate = ({ candidate }) => {
-          if (candidate) {
-            console.log(`[WebRTC] ICE candidate gathered: ${candidate.candidate.substring(0, 60)}...`);
-            iceCandidatesRef.current.local.push(candidate);
-            sendSignal({ type: "candidate", candidate });
-          } else {
-            console.log("[WebRTC] ICE candidate gathering complete.");
-          }
-        };
-
-        pc.oniceconnectionstatechange = () => {
-          console.log(`[WebRTC] ICE Connection State changed to: ${pc.iceConnectionState}`);
-        };
-
-        pc.onicegatheringstatechange = () => {
-          console.log(`[WebRTC] ICE Gathering State changed to: ${pc.iceGatheringState}`);
-        };
-
-        // 9. IMPROVED: Perfect negotiation with retry
-        pc.onnegotiationneeded = async () => {
-          if (makingOffer || pc.signalingState !== "stable") {
-            console.log(`[WebRTC] Negotiation deferred (makingOffer=${makingOffer}, signalingState=${pc.signalingState})`);
-            return;
-          }
-
-          try {
-            makingOffer = true;
-            console.log("[WebRTC] Creating local offer...");
-            await pc.setLocalDescription();
-            console.log(`[WebRTC] Local description set (type=${pc.localDescription?.type}). Sending signal...`);
-            sendSignal({
-              type: "description",
-              description: pc.localDescription,
-            });
-          } catch (err) {
-            console.error("[WebRTC] Negotiation error:", err);
-          } finally {
-            makingOffer = false;
-          }
-        };
-
-        // 10. Connection state monitoring
-        pc.onconnectionstatechange = () => {
-          const state = pc.connectionState;
-          console.log(`[WebRTC] PeerConnection Connection State changed to: ${state}`);
-          switch (state) {
-            case "connecting":
-              setConnectionStatus("connecting");
-              break;
-            case "connected":
-              console.log(`[WebRTC] Successfully connected to partner: ${otherUser.name}!`);
-              setConnectionStatus("connected");
-              if (iceRestartTimeoutRef.current) {
-                clearTimeout(iceRestartTimeoutRef.current);
-                iceRestartTimeoutRef.current = null;
-              }
-              break;
-            case "disconnected":
-              console.warn(`[WebRTC] Connection with ${otherUser.name} disconnected. Reconnecting...`);
-              setConnectionStatus("reconnecting");
-              // Auto-reconnect after 5 seconds
-              iceRestartTimeoutRef.current = setTimeout(() => {
-                if (pc?.connectionState === "disconnected") {
-                  console.warn("[WebRTC] Auto ICE restart triggered after 5s disconnect.");
-                  pc.restartIce();
-                }
-              }, 5000);
-              break;
-            case "failed":
-              console.error(`[WebRTC] Connection with ${otherUser.name} failed. Restarting ICE.`);
-              setConnectionStatus("failed");
-              pc.restartIce();
-              break;
-            case "closed":
-              console.log("[WebRTC] Connection closed.");
-              setConnectionStatus("failed");
-              break;
-          }
-        };
-
-        // 11. Start stats polling
+        // Start stats polling
         startStatsPolling(pc);
-
-        // 12. IMPROVED: Signal handling with proper queuing
-        const candidateQueue: RTCIceCandidateInit[] = [];
-        let isSettingRemoteDescription = false;
-
-        const handleSignal = async (e: CustomEvent) => {
-          const data = e.detail;
-          if (data.sender === currentUser.id) return;
-
-          const pc = peerConnection.current;
-          if (!pc || pc.signalingState === "closed") return;
-
-          console.log(`[WebRTC] Incoming signal event: type=${data.type || "unknown"}`);
-          try {
-            if (data.payload && data.payload.type === "mode_change") {
-              console.log(`[WebRTC] Remote peer requested mode change to: ${data.payload.mode}`);
-              setViewMode(data.payload.mode);
-              return;
-            }
-
-            const { description, candidate } = data.payload || {};
-
-            if (description) {
-              const offerCollision =
-                description.type === "offer" &&
-                (makingOffer || pc.signalingState !== "stable");
-
-              ignoreOffer = !polite && offerCollision;
-              if (ignoreOffer) {
-                console.log("[WebRTC] Offer collision detected. Ignored because we are the impolite peer.");
-                return;
-              }
-
-              isSettingRemoteDescription = true;
-              if (offerCollision) {
-                console.log("[WebRTC] Offer collision detected. Rolling back local offer.");
-                await pc.setLocalDescription({ type: "rollback" });
-              }
-
-              console.log(`[WebRTC] Applying remote description: type=${description.type}`);
-              await pc.setRemoteDescription(description);
-              isSettingRemoteDescription = false;
-
-              // Process queued candidates
-              if (candidateQueue.length > 0) {
-                console.log(`[WebRTC] Processing ${candidateQueue.length} queued remote candidates.`);
-                while (candidateQueue.length) {
-                  const buffered = candidateQueue.shift();
-                  if (buffered) {
-                    try {
-                      await pc.addIceCandidate(buffered);
-                    } catch (e) {
-                      console.warn("[WebRTC] Buffered candidate failed to apply", e);
-                    }
-                  }
-                }
-              }
-
-              if (description.type === "offer") {
-                console.log("[WebRTC] Remote offer applied. Creating answer description...");
-                await pc.setLocalDescription();
-                sendSignal({
-                  type: "description",
-                  description: pc.localDescription,
-                });
-              }
-            } else if (candidate) {
-              if (pc.remoteDescription && !isSettingRemoteDescription) {
-                try {
-                  console.log("[WebRTC] Applying remote ICE candidate immediately.");
-                  await pc.addIceCandidate(candidate);
-                  iceCandidatesRef.current.remote.push(candidate);
-                } catch (e) {
-                  console.warn("[WebRTC] ICE candidate application failed", e);
-                }
-              } else {
-                console.log("[WebRTC] Remote description not set yet. Queueing candidate.");
-                candidateQueue.push(candidate);
-              }
-            }
-          } catch (err) {
-            console.error("[WebRTC] Signal handling error:", err);
-            isSettingRemoteDescription = false;
-          }
-        };
-
-        window.addEventListener("webrtc-signal", handleSignal as EventListener);
-        (window as any)._tempSignalHandler = handleSignal;
       } catch (err) {
         console.error("Setup error", err);
         setPermissionError(
@@ -729,7 +741,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
 
     try {
       const videoTransceiver = pc.getTransceivers().find(
-        (t) => t.mediaType === "video"
+        (t) => t.receiver.track.kind === "video"
       );
 
       if (videoTransceiver?.sender?.track) {
@@ -745,6 +757,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
           });
           camTrack = newStream.getVideoTracks()[0];
           videoTrackRef.current = camTrack;
+          cameraStreamRef.current = newStream;
           allStreamsRef.current.push(newStream);
         } catch (mediaErr) {
           console.warn("Could not re-acquire camera track on stop screen sharing", mediaErr);
@@ -788,7 +801,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
         allStreamsRef.current.push(displayStream);
 
         const videoTransceiver = pc.getTransceivers().find(
-          (t) => t.mediaType === "video"
+          (t) => t.receiver.track.kind === "video"
         );
 
         if (videoTransceiver) {
@@ -932,7 +945,7 @@ const LiveSessionPage: React.FC<LiveSessionPageProps> = ({
                   <p className="mt-4 text-xl font-medium">Use the tools to draw, write, and collaborate in real-time.</p>
                 </div>
               </div>
-              <Whiteboard sessionId={session.id} />
+              <Whiteboard sessionId={session.id} isReadOnly={session.teacherId !== currentUser.id} />
             </>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-black rounded-[32px]">

@@ -227,9 +227,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="flex items-center gap-2">
                       <img
                         src={
-                          upcomingSessions[0].studentId === currentUser.id
+                          (upcomingSessions[0].studentId === currentUser.id
                             ? getUser(upcomingSessions[0].teacherId)?.avatarUrl
-                            : getUser(upcomingSessions[0].studentId)?.avatarUrl
+                            : getUser(upcomingSessions[0].studentId)?.avatarUrl) || null
                         }
                         alt="avatar"
                         className="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/20"
@@ -350,7 +350,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                       <div className="flex items-start gap-4">
                         <div className="relative flex-shrink-0">
                           <img
-                            src={user.avatarUrl}
+                            src={user.avatarUrl || null}
                             alt={user.name}
                             className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800"
                           />
@@ -403,7 +403,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="flex items-center gap-4 pb-6 border-b border-slate-200/30 dark:border-slate-800/30">
               <div className="relative">
                 <img
-                  src={currentUser.avatarUrl}
+                  src={currentUser.avatarUrl || null}
                   alt={currentUser.name}
                   className="w-14 h-14 rounded-full border border-white dark:border-slate-800 object-cover"
                 />

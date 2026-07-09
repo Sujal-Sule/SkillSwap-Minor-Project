@@ -35,13 +35,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       return;
     }
 
-    videoEl.srcObject = stream;
+    const currentSrcObject = videoEl.srcObject as MediaStream | null;
+    const tracksEqual = (() => {
+      if (!currentSrcObject) return false;
+      const tracksA = currentSrcObject.getTracks();
+      const tracksB = stream.getTracks();
+      if (tracksA.length !== tracksB.length) return false;
+      const idsA = new Set(tracksA.map((t) => t.id));
+      return tracksB.every((t) => idsA.has(t.id));
+    })();
+
+    if (!tracksEqual) {
+      videoEl.srcObject = stream;
+    }
+
     videoEl.play().catch((err) => {
-      console.warn("Autoplay failed:", err);
+      if (err.name !== "AbortError") {
+        console.warn("Autoplay failed:", err);
+      }
     });
 
     const handleTrackChange = () => {
-      if (videoEl.srcObject !== stream) {
+      const current = videoEl.srcObject as MediaStream | null;
+      if (current !== stream) {
         videoEl.srcObject = stream;
       }
       videoEl.play().catch(() => {});

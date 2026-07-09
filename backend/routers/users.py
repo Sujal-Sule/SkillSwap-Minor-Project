@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
 from typing import List, Optional
+from datetime import datetime
 from ..firebase_setup import get_firestore_db
 from ..database import get_database
 from ..models import UserInDB, UserBase, TokenTransaction, Rating
@@ -10,6 +11,12 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserInDB)
 async def get_my_profile(current_user: UserInDB = Depends(get_current_user)):
+    db = get_firestore_db()
+    now_str = datetime.utcnow().isoformat()
+    db.collection('users').document(current_user.id).update({
+        "lastActive": now_str
+    })
+    current_user.lastActive = now_str
     current_user.isOnline = True
     return current_user
 
@@ -17,6 +24,8 @@ async def get_my_profile(current_user: UserInDB = Depends(get_current_user)):
 async def update_my_profile(update_data: UserBase = Body(...), current_user: UserInDB = Depends(get_current_user)):
     db = get_firestore_db()
     update_dict = update_data.model_dump(exclude={"id", "email", "tokens"}, exclude_unset=True) 
+    now_str = datetime.utcnow().isoformat()
+    update_dict["lastActive"] = now_str
     
     user_ref = db.collection('users').document(current_user.id)
     user_ref.update(update_dict)

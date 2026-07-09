@@ -54,6 +54,7 @@ const TermsOfServicePage = React.lazy(
 
 // --- Eagerly-loaded components (needed on every page or immediately) ---
 import Header from "./components/Header";
+import LoadingScreen from "./components/LoadingScreen";
 import RatingModal from "./components/RatingModal";
 import Modal from "./components/Modal";
 import ScheduleSessionModal from "./components/ScheduleSessionModal";
@@ -360,6 +361,11 @@ const App: React.FC = () => {
   // State relevant to specific pages - simpler to keep here for this refactor than moving all to context or pages
   const [viewingProfile, setViewingProfile] = useState<User | null>(null);
   const [activeChatPartner, setActiveChatPartner] = useState<User | null>(null);
+  const activeChatPartnerRef = useRef<User | null>(null);
+  useEffect(() => {
+    activeChatPartnerRef.current = activeChatPartner;
+  }, [activeChatPartner]);
+
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [connectionRequests, setConnectionRequests] = useState<
     ConnectionRequest[]
@@ -833,13 +839,24 @@ const App: React.FC = () => {
             });
           }
 
+          const isCurrentlyViewingChat =
+            window.location.pathname === "/chat" &&
+            activeChatPartnerRef.current &&
+            activeChatPartnerRef.current.id === data.senderId;
+
           const parsedMessage: Message = {
             ...data,
             timestamp: parseAsUTC(data.timestamp),
             id: data._id || data.id,
             session: sessionData,
-            isRead: data.isRead ?? false,
+            isRead: isCurrentlyViewingChat ? true : (data.isRead ?? false),
           };
+
+          if (isCurrentlyViewingChat) {
+            api.put(`/chat/${data.senderId}/read`).catch((err) => {
+              console.error("[Chat] Failed to auto-mark incoming message as read", err);
+            });
+          }
 
           setMessages((prev) => {
             if (prev.some((m) => m.id === parsedMessage.id)) return prev;
@@ -855,6 +872,7 @@ const App: React.FC = () => {
         };
 
         socket.onclose = (event) => {
+          if (intentionallyClosed) return;
           console.log("WebSocket Disconnected", event.code, event.reason);
           (window as any).SKILLSWAP_SIGNAL_READY = false;
 
@@ -878,12 +896,13 @@ const App: React.FC = () => {
         };
 
         socket.onerror = (error) => {
+          if (intentionallyClosed) return;
           console.error("WebSocket error:", error);
         };
       }
 
-      // Start connection
-      connectWebSocket();
+      // Start connection with a small delay to avoid double connection/close in React StrictMode
+      reconnectTimeout = setTimeout(connectWebSocket, 100);
 
       window.addEventListener(
         "send-webrtc-signal",
@@ -1028,21 +1047,22 @@ const App: React.FC = () => {
 
   const handleMarkAsRead = async (partnerId: string) => {
     if (!currentUser) return;
-    console.log(`[Chat] Marking conversation with partner ${partnerId} as read.`);
+    console.log(`[Chat] Marking conversation with partner ${partnerId} as read (optimistic).`);
+    
+    // 1. Optimistically update local state immediately
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.senderId === partnerId && m.receiverId === currentUser.id
+          ? { ...m, isRead: true }
+          : m
+      )
+    );
+
+    // 2. Perform backend sync asynchronously
     try {
       await api.put(`/chat/${partnerId}/read`);
-      setMessages((prev) => {
-        const updated = prev.map((m) =>
-          m.senderId === partnerId && m.receiverId === currentUser.id
-            ? { ...m, isRead: true }
-            : m
-        );
-        const remainingUnread = updated.filter(m => m.receiverId === currentUser.id && !m.isRead).length;
-        console.log(`[Chat] Local state updated. Remaining unread messages for current user: ${remainingUnread}`);
-        return updated;
-      });
     } catch (error) {
-      console.error("[Chat] Failed to mark messages as read:", error);
+      console.error("[Chat] Failed to mark messages as read on backend:", error);
     }
   };
 
@@ -1086,14 +1106,20 @@ const App: React.FC = () => {
 
   const unreadMessagesCount = useMemo(() => {
     if (!currentUser) return 0;
-    const unread = messages.filter((m) => m.receiverId === currentUser.id && !m.isRead);
+    const userIds = new Set(allUsers.map((u) => u.id));
+    const unread = messages.filter(
+      (m) =>
+        m.receiverId === currentUser.id &&
+        !m.isRead &&
+        userIds.has(m.senderId)
+    );
     if (unread.length > 0) {
       console.log(`[Chat] Found ${unread.length} unread messages for user ${currentUser.id}:`, unread.map(m => ({ id: m.id, sender: m.senderId, text: m.text, isRead: m.isRead })));
     } else {
       console.log("[Chat] No unread messages found for current user.");
     }
     return unread.length;
-  }, [messages, currentUser]);
+  }, [messages, currentUser, allUsers]);
 
   const userNavItems = useMemo(
     () => [
@@ -1150,21 +1176,7 @@ const App: React.FC = () => {
   );
 
   if (authLoading) {
-    return (
-      <div className="w-full min-h-screen bg-[#e8edf2] dark:bg-[#121a2e] flex items-center justify-center font-sans">
-        <div className="text-center">
-          <div className="relative mb-4 mx-auto w-16 h-16">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 animate-pulse blur-sm scale-105" />
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-400 to-purple-500 flex items-center justify-center shadow-lg">
-              <SparklesIcon className="w-9 h-9 text-white animate-spin-slow" />
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 animate-pulse uppercase tracking-wider">
-            Loading SkillSwap...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

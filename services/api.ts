@@ -18,8 +18,18 @@ export const getWebSocketUrl = (path: string) => {
   return `${url}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
+import { getAuthInstance } from "../firebaseConfig";
+
 async function getAuthHeaders() {
-  const token = localStorage.getItem("appToken");
+  let token = localStorage.getItem("appToken");
+  try {
+    const auth = getAuthInstance();
+    if (auth && auth.currentUser) {
+      token = await auth.currentUser.getIdToken();
+    }
+  } catch (err) {
+    console.warn("Failed to get fresh Firebase token", err);
+  }
   return token
     ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
     : { "Content-Type": "application/json" };
